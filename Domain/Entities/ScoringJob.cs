@@ -1,4 +1,4 @@
-﻿using Domain.Enums;
+using Domain.Enums;
 
 namespace Domain.Entities;
 
@@ -16,7 +16,7 @@ public class ScoringJob
 
     public DateTime StartedAt { get; set; }
 
-    public DateTime CompltedAt { get; set; }
+    public DateTime CompletdAt { get; set; }
 
     public string? ErrorMessage { get; set; }
 

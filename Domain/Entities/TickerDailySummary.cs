@@ -1,9 +1,9 @@
-﻿namespace Domain.Entities;
+namespace Domain.Entities;
 
 public class TickerDailySummary
 {
     public int Id { get; set; }
-   
+
     public int TickerId { get; set; }
 
     public DateTime SummaryDate { get; set; }
