@@ -27,7 +27,7 @@ public class CreateDailyAggregationUseCaseTests
         var targetDate = DateTime.UtcNow.Date.AddDays(-1);
 
         db.Ticker.Add(new Ticker { Id = 1, Symbol = "AAPL", CompanyName = "Apple" });
-        db.Artice.AddRange(
+        db.Article.AddRange(
             new Article { Id = 1, Title = "A1", Description = "d", Url = "https://a1", SourceName = "s", PublishedAt = targetDate, CreatedAt = targetDate },
             new Article { Id = 2, Title = "A2", Description = "d", Url = "https://a2", SourceName = "s", PublishedAt = targetDate, CreatedAt = targetDate });
         db.ArticleScores.AddRange(
@@ -57,7 +57,7 @@ public class CreateDailyAggregationUseCaseTests
         db.Ticker.AddRange(
             new Ticker { Id = 1, Symbol = "A" },
             new Ticker { Id = 2, Symbol = "B" });
-        db.Artice.Add(new Article { Id = 1, Title = "A", Url = "U" });
+        db.Article.Add(new Article { Id = 1, Title = "A", Url = "U" });
         db.ArticleScores.AddRange(
             new ArticleScore { TickerId = 1, ArticleId = 1, Score = 0.5m, ScoredAt = yesterday.AddHours(1) },
             new ArticleScore { TickerId = 2, ArticleId = 1, Score = 1.0m, ScoredAt = yesterday.AddHours(2) });
@@ -78,8 +78,8 @@ public class CreateDailyAggregationUseCaseTests
         await using var db = new TestAppDbContext();
         var yesterday = DateTime.UtcNow.Date.AddDays(-1);
         db.Ticker.Add(new Ticker { Id = 1, Symbol = "A" });
-        db.Artice.Add(new Article { Id = 1, Title = "A1", Url = "U1" });
-        db.Artice.Add(new Article { Id = 2, Title = "A2", Url = "U2" });
+        db.Article.Add(new Article { Id = 1, Title = "A1", Url = "U1" });
+        db.Article.Add(new Article { Id = 2, Title = "A2", Url = "U2" });
         await db.SaveChangesAsync();
         
         // Run 1: 1 article score

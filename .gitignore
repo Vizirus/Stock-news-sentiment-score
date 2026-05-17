@@ -1,1 +1,18 @@
+# .gitignore
+
+# IDE folders
 .vs/
+.vscode/
+
+# Build folders
+**/bin/
+**/obj/
+
+# Secrets and environment
+.env
+appsettings.json
+appsettings.Development.json
+
+# NuGet
+**/packages/
+**/project.assets.json

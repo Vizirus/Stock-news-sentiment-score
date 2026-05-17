@@ -14,7 +14,7 @@ public class RawDataCleanUpUseCaseTests
         await using var db = new TestAppDbContext();
         var now = DateTime.UtcNow;
         db.Ticker.Add(new Ticker { Id = 1, Symbol = "AAPL", CompanyName = "Apple" });
-        db.Artice.AddRange(
+        db.Article.AddRange(
             new Article { Id = 1, Title = "Old", Url = "https://old", SourceName = "s", Description = "d", CreatedAt = now.AddDays(-31), PublishedAt = now.AddDays(-31) },
             new Article { Id = 2, Title = "New", Url = "https://new", SourceName = "s", Description = "d", CreatedAt = now.AddDays(-3), PublishedAt = now.AddDays(-3) });
         db.ScoringJobs.AddRange(
@@ -30,9 +30,9 @@ public class RawDataCleanUpUseCaseTests
 
         await sut.ExecuteAsync(retentionDays: 30);
 
-        Assert.Single(db.Artice);
+        Assert.Single(db.Article);
         Assert.Single(db.ScoringJobs);
         Assert.Single(db.ArticleScores);
-        Assert.Equal("New", db.Artice.Single().Title);
+        Assert.Equal("New", db.Article.Single().Title);
     }
 }

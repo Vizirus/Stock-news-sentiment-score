@@ -25,7 +25,9 @@ public class FetchArticlesUseCase
         {
             token.ThrowIfCancellationRequested();
           
-            var fetchedArticles = await newsAPI.GetArticlesForCompany(ticker.Symbol, token);
+            var toDate = DateTime.UtcNow.Date;
+            var fromDate = toDate.AddDays(-1);
+            var fetchedArticles = await newsAPI.GetArticlesForCompany(ticker.Symbol, fromDate, toDate, token);
             if (fetchedArticles.Count == 0)
             {
                 continue;
@@ -43,7 +45,7 @@ public class FetchArticlesUseCase
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var existingKeys = await dbContext.Artice
+            var existingKeys = await dbContext.Article
                 .AsNoTracking()
                 .Where(a =>
                     (fetchedUrls.Count > 0 && fetchedUrls.Contains(a.Url)) ||
@@ -80,7 +82,7 @@ public class FetchArticlesUseCase
                     CreatedAt = fetched.CreatedAt == default ? now : fetched.CreatedAt
                 };
 
-                dbContext.Artice.Add(article);
+                dbContext.Article.Add(article);
 
                 dbContext.ScoringJobs.Add(new ScoringJob
                 {

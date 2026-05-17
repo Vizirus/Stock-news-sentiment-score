@@ -1,5 +1,385 @@
-﻿@{
+@model Web.Models.DashboardViewModel
+@{
     ViewData["Title"] = "Dashboard";
+
+    string ScoreClass(decimal s) => s switch {
+        > 0.2m  => "score-positive",
+        < -0.2m => "score-negative",
+        _       => "score-neutral"
+    };
+
+    string BadgeClass(string label) => label.ToLower() switch {
+        "very positive" => "very-positive",
+        "positive"      => "positive",
+        "negative"      => "negative",
+        "very negative" => "very-negative",
+        _               => "neutral"
+    };
 }
 
-<h1>Stock News Sentiment Dashboard</h1>
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">Stock News Sentiment Tracker Dashboard</h1>
+</div>
+
+<form method="get" action="/Dashboard/Index" id="filterForm" class="filter-bar">
+    <div class="filter-group">
+        <span class="filter-label">Ticker</span>
+        <select class="filter-select" id="tickerSelect" name="ticker" onchange="document.getElementById('filterForm').submit();">
+            @foreach (var t in Model.AvailableTickers)
+            {
+                <option value="@t" selected="@(t == Model.SelectedTicker ? "selected" : null)">@t</option>
+            }
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <span class="filter-label">Start Date</span>
+        <input type="date" class="filter-select" id="startDate" name="startDate" 
+               max="@DateTime.UtcNow.ToString("yyyy-MM-dd")"
+               value="@Model.DateRangeStart.ToString("yyyy-MM-dd")" 
+               onchange="validateAndSubmit()" />
+    </div>
+
+    <div class="filter-group">
+        <span class="filter-label">End Date</span>
+        <input type="date" class="filter-select" id="endDate" name="endDate" 
+               max="@DateTime.UtcNow.ToString("yyyy-MM-dd")"
+               value="@Model.DateRangeEnd.ToString("yyyy-MM-dd")" 
+               onchange="validateAndSubmit()" />
+    </div>
+
+    <div class="filter-actions">
+        <button type="submit" class="btn btn-ghost" id="refreshBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            Refresh
+        </button>
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Search articles..." />
+        </div>
+    </div>
+</form>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-label">Selected Ticker</div>
+        <div class="kpi-value accent-teal">@Model.SelectedTicker</div>
+        <div class="kpi-sub">@Model.CompanyName</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Current Avg Sentiment</div>
+        <div class="kpi-value accent-blue">@Model.CurrentAvgSentiment.ToString("+0.00;-0.00;0.00")</div>
+        <div class="kpi-sub">@Model.SentimentLabel</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Articles Today</div>
+        <div class="kpi-value">@Model.ArticlesToday</div>
+        <div class="kpi-sub">articles</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Trend Direction</div>
+        <div class="kpi-trend-icon">↗</div>
+        <div class="kpi-sub">@Model.TrendDirection</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Last Updated</div>
+        <div class="kpi-value accent-yellow" style="font-size:18px;">@Model.LastUpdated</div>
+        <div class="kpi-sub">@Model.LastUpdatedTime</div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="charts-grid">
+    <!-- Line Chart: Sentiment Trend -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Sentiment Trend Over Time</span>
+        </div>
+        <div class="chart-container" style="height: 220px;">
+            <canvas id="sentimentTrendChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Pie Chart: Distribution -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Sentiment Distribution</span>
+        </div>
+        <div class="pie-wrapper">
+            <div class="pie-legend">
+                <div class="legend-item">
+                    <div class="legend-dot-label">
+                        <div class="legend-dot" style="background: var(--positive-color);"></div>
+                        <span class="legend-name">Positive</span>
+                    </div>
+                    <span class="legend-pct">@Model.PositivePercent%</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot-label">
+                        <div class="legend-dot" style="background: var(--neutral-color);"></div>
+                        <span class="legend-name">Neutral</span>
+                    </div>
+                    <span class="legend-pct">@Model.NeutralPercent%</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot-label">
+                        <div class="legend-dot" style="background: var(--negative-color);"></div>
+                        <span class="legend-name">Negative</span>
+                    </div>
+                    <span class="legend-pct">@Model.NegativePercent%</span>
+                </div>
+                <div class="pie-total">Total Articles: @Model.TotalArticles</div>
+            </div>
+            <div class="pie-chart-wrap">
+                <canvas id="sentimentPieChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Grid -->
+<div class="bottom-grid">
+
+    <!-- Recent Articles -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Recent Articles</span>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("Index", "Articles", new { ticker = Model.SelectedTicker, startDate = Model.DateRangeStart.ToString("yyyy-MM-dd"), endDate = Model.DateRangeEnd.ToString("yyyy-MM-dd") })'">View Details</button>
+                <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("ExportRecentArticles", "Dashboard", new { ticker = Model.SelectedTicker, startDate = Model.DateRangeStart.ToString("yyyy-MM-dd"), endDate = Model.DateRangeEnd.ToString("yyyy-MM-dd") })'">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export
+                </button>
+            </div>
+        </div>
+        <table class="data-table" id="articlesTable">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Source</th>
+                    <th>Published At</th>
+                    <th>Score</th>
+                    <th>Label</th>
+                    <th>Confidence</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model.RecentArticles)
+                {
+                    <tr>
+                        <td class="table-title-cell" title="@a.Title">@a.Title</td>
+                        <td>@a.Source</td>
+                        <td style="white-space:nowrap;font-size:12px;color:var(--text-secondary);">@a.PublishedAt</td>
+                        <td class="@ScoreClass(a.Score)">@a.Score.ToString("+0.00;-0.00;0.00")</td>
+                        <td><span class="score-badge @BadgeClass(a.ScoreLabel)">@a.ScoreLabel</span></td>
+                        <td style="color:var(--text-secondary);">@a.Confidence.ToString("0.00")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="table-footer">
+            <span class="table-footer-text">Showing 1 to @Model.RecentArticles.Count of @Model.TotalArticles</span>
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("Index", "Articles", new { ticker = Model.SelectedTicker, startDate = Model.DateRangeStart.ToString("yyyy-MM-dd"), endDate = Model.DateRangeEnd.ToString("yyyy-MM-dd") })'">View Details</button>
+        </div>
+    </div>
+
+    <!-- Daily Summaries -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Ticker Daily Summaries</span>
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("ExportDailySummaries", "Dashboard", new { ticker = Model.SelectedTicker, startDate = Model.DateRangeStart.ToString("yyyy-MM-dd"), endDate = Model.DateRangeEnd.ToString("yyyy-MM-dd") })'">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export
+            </button>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Avg Score</th>
+                    <th>Articles</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.DailySummaries)
+                {
+                    <tr>
+                        <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">@s.Date</td>
+                        <td class="@ScoreClass(s.AverageScore)">@s.AverageScore.ToString("+0.00;-0.00;0.00")</td>
+                        <td>@s.ArticleCount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="table-footer">
+            <span class="table-footer-text">Showing 1 to @Model.DailySummaries.Count of @Model.DailySummaries.Count</span>
+        </div>
+    </div>
+
+    <!-- Scoring Jobs -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Pending / Failed Jobs</span>
+        </div>
+
+        <div class="job-counters">
+            <div class="job-counter">
+                <div class="job-counter-label">Pending Jobs</div>
+                <div class="job-counter-value pending">@Model.PendingJobs</div>
+            </div>
+            <div class="job-counter">
+                <div class="job-counter-label">Failed Jobs</div>
+                <div class="job-counter-value failed">@Model.FailedJobs</div>
+            </div>
+        </div>
+
+        <div class="job-queue-label">Job Queue</div>
+        <div class="job-list">
+            <!-- Job list will be populated here when the API supports it -->
+            <div class="job-row" style="justify-content: center; color: var(--text-muted); font-size: 12px; font-style: italic;">
+                Detailed job list coming soon.
+            </div>
+        </div>
+
+        <form method="post" action="/Dashboard/RetryFailedJobs">
+            <input type="hidden" name="ticker" value="@Model.SelectedTicker" />
+            <button type="submit" class="btn btn-secondary retry-btn" id="retryBtn" @(Model.PendingJobs > 0 ? "disabled" : "")>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                Retry Failed Jobs
+            </button>
+        </form>
+    </div>
+
+</div>
+
+@section Scripts {
+<script>
+    // ---- Line Chart: Sentiment Trend ----
+    const trendCtx = document.getElementById('sentimentTrendChart').getContext('2d');
+    const trendLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TrendLabels));
+    const trendScores = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TrendScores));
+
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'Sentiment Score',
+                data: trendScores,
+                borderColor: '#569cd6',
+                backgroundColor: 'rgba(86,156,214,0.08)',
+                borderWidth: 2.5,
+                pointBackgroundColor: '#569cd6',
+                pointBorderColor: '#1e1e2e',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                tension: 0.35,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#2a2a3e',
+                    borderColor: '#3a3a52',
+                    borderWidth: 1,
+                    titleColor: '#d4d4d4',
+                    bodyColor: '#9ca3af',
+                    padding: 12,
+                    callbacks: {
+                        label: ctx => ` Score: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#2e2e42' },
+                    ticks: { color: '#9ca3af', font: { size: 11 } }
+                },
+                y: {
+                    min: -1, max: 1,
+                    grid: { color: '#2e2e42' },
+                    ticks: {
+                        color: '#9ca3af',
+                        font: { size: 11 },
+                        callback: v => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1)
+                    }
+                }
+            }
+        }
+    });
+
+    // ---- Pie Chart: Sentiment Distribution ----
+    const pieCtx = document.getElementById('sentimentPieChart').getContext('2d');
+
+    new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Positive', 'Neutral', 'Negative'],
+            datasets: [{
+                data: [@Model.PositivePercent, @Model.NeutralPercent, @Model.NegativePercent],
+                backgroundColor: ['rgba(106,191,105,0.85)', 'rgba(220,220,170,0.75)', 'rgba(244,71,71,0.80)'],
+                borderColor: '#2a2a3e',
+                borderWidth: 3,
+                hoverOffset: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '60%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#2a2a3e',
+                    borderColor: '#3a3a52',
+                    borderWidth: 1,
+                    titleColor: '#d4d4d4',
+                    bodyColor: '#9ca3af',
+                    padding: 10,
+                }
+            }
+        }
+    });
+
+    // ---- Sidebar Toggle ----
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+    });
+
+    // ---- Date Validation ----
+    function validateAndSubmit() {
+        const startInput = document.getElementById('startDate');
+        const endInput = document.getElementById('endDate');
+        const start = startInput.value;
+        const end = endInput.value;
+        
+        if (start && end && start > end) {
+            alert('Start date cannot be after the end date.');
+            return;
+        }
+        
+        document.getElementById('filterForm').submit();
+    }
+</script>
+}

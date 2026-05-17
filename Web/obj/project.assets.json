@@ -1952,6 +1952,7 @@
           "Application": "1.0.0",
           "Microsoft.EntityFrameworkCore": "9.0.15",
           "Microsoft.EntityFrameworkCore.SqlServer": "9.0.15",
+          "Microsoft.EntityFrameworkCore.Sqlite": "9.0.15",
           "Microsoft.Extensions.Http": "9.0.15"
         },
         "compile": {
@@ -5488,7 +5489,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.313/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.314/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

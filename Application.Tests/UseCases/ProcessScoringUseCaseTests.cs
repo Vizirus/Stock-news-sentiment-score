@@ -11,6 +11,25 @@ namespace Application.Tests.UseCases;
 
 public class ProcessScoringUseCaseTests
 {
+    // Helper to create a mock LLM that returns a batch result matching the input articles by index
+    private static Mock<ISentimentLLM> CreateSuccessfulLlm(string label = "Neutral", decimal score = 0.0m)
+    {
+        var llm = new Mock<ISentimentLLM>();
+        llm.Setup(x => x.ScoreArticlesAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<IReadOnlyList<ArticleInputDto>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, string _, IReadOnlyList<ArticleInputDto> articles, CancellationToken _) =>
+                articles.Select(a => new SentimentResultDto
+                {
+                    Index = a.Index,
+                    Score = score,
+                    ScoreLabel = label,
+                    Confidence = 0.9m
+                }).ToList());
+        return llm;
+    }
+
     [Fact]
     public async Task ExecuteAsync_WithInvalidDailyLimit_Throws()
     {
@@ -30,34 +49,22 @@ public class ProcessScoringUseCaseTests
         var ticker = new Ticker { Id = 1, Symbol = "MSFT", CompanyName = "Microsoft" };
         var article = new Article
         {
-            Id = 2,
-            Title = "Title",
-            Description = "Description",
-            Url = "https://example.com/a",
-            SourceName = "src",
-            CreatedAt = DateTime.UtcNow,
-            PublishedAt = DateTime.UtcNow
+            Id = 2, Title = "Title", Description = "Description",
+            Url = "https://example.com/a", SourceName = "src",
+            CreatedAt = DateTime.UtcNow, PublishedAt = DateTime.UtcNow
         };
         var job = new ScoringJob
         {
-            Id = 3,
-            TickerId = 1,
-            ArticleId = 2,
-            StatusId = ScoringJobStatus.Pending,
-            CreatedAt = DateTime.UtcNow.AddMinutes(-5),
-            Ticker = ticker,
-            Article = article
+            Id = 3, TickerId = 1, ArticleId = 2, StatusId = ScoringJobStatus.Pending,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-5), Ticker = ticker, Article = article
         };
 
         db.Ticker.Add(ticker);
-        db.Artice.Add(article);
+        db.Article.Add(article);
         db.ScoringJobs.Add(job);
         await db.SaveChangesAsync();
 
-        var llm = new Mock<ISentimentLLM>(MockBehavior.Strict);
-        llm.Setup(x => x.ScoreArticles("MSFT", "Microsoft", "Title", "Description", "https://example.com/a", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SentimentResultDto { Score = 0.7m, ScoreLabel = "Positive", Confidence = 0.88m });
-
+        var llm = CreateSuccessfulLlm("Positive", 0.7m);
         var logger = new Mock<ILogger<ProcessScoringUseCase>>();
         var sut = new ProcessScoringUseCase(db, llm.Object, logger.Object);
 
@@ -65,6 +72,7 @@ public class ProcessScoringUseCaseTests
 
         Assert.Single(db.ArticleScores);
         Assert.Equal(ScoringJobStatus.Completed, db.ScoringJobs.Single().StatusId);
+        Assert.Equal(0.7m, db.ArticleScores.Single().Score);
     }
 
     [Fact]
@@ -74,30 +82,22 @@ public class ProcessScoringUseCaseTests
         var ticker = new Ticker { Id = 1, Symbol = "MSFT", CompanyName = "Microsoft" };
         var article = new Article
         {
-            Id = 2,
-            Title = "Title",
-            Description = "Description",
-            Url = "https://example.com/a",
-            SourceName = "src",
-            CreatedAt = DateTime.UtcNow,
-            PublishedAt = DateTime.UtcNow
+            Id = 2, Title = "Title", Description = "Description",
+            Url = "https://example.com/a", SourceName = "src",
+            CreatedAt = DateTime.UtcNow, PublishedAt = DateTime.UtcNow
         };
         db.Ticker.Add(ticker);
-        db.Artice.Add(article);
+        db.Article.Add(article);
         db.ScoringJobs.Add(new ScoringJob
         {
-            Id = 3,
-            TickerId = 1,
-            ArticleId = 2,
-            StatusId = ScoringJobStatus.Pending,
-            CreatedAt = DateTime.UtcNow.AddMinutes(-5),
-            Ticker = ticker,
-            Article = article
+            Id = 3, TickerId = 1, ArticleId = 2, StatusId = ScoringJobStatus.Pending,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-5), Ticker = ticker, Article = article
         });
         await db.SaveChangesAsync();
 
         var llm = new Mock<ISentimentLLM>(MockBehavior.Strict);
-        llm.Setup(x => x.ScoreArticles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        llm.Setup(x => x.ScoreArticlesAsync(It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<IReadOnlyList<ArticleInputDto>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("LLM unavailable"));
 
         var logger = new Mock<ILogger<ProcessScoringUseCase>>();
@@ -115,31 +115,26 @@ public class ProcessScoringUseCaseTests
         await using var db = new TestAppDbContext();
         var ticker = new Ticker { Id = 1, Symbol = "T", CompanyName = "Test" };
         db.Ticker.Add(ticker);
-        
-        // Add 2 jobs
-        for(int i = 1; i <= 2; i++)
+
+        for (int i = 1; i <= 2; i++)
         {
-            var art = new Article { Id = i, Title = "T"+i, Url = "U"+i, CreatedAt = DateTime.UtcNow };
-            db.Artice.Add(art);
-            db.ScoringJobs.Add(new ScoringJob 
-            { 
-                Id = i, TickerId = 1, ArticleId = i, StatusId = ScoringJobStatus.Pending, 
-                CreatedAt = DateTime.UtcNow, Ticker = ticker, Article = art 
+            var art = new Article { Id = i, Title = "T" + i, Url = "U" + i, CreatedAt = DateTime.UtcNow };
+            db.Article.Add(art);
+            db.ScoringJobs.Add(new ScoringJob
+            {
+                Id = i, TickerId = 1, ArticleId = i, StatusId = ScoringJobStatus.Pending,
+                CreatedAt = DateTime.UtcNow, Ticker = ticker, Article = art
             });
         }
         await db.SaveChangesAsync();
 
-        var llm = new Mock<ISentimentLLM>();
-        llm.Setup(x => x.ScoreArticles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SentimentResultDto { ScoreLabel = "Neutral" });
-
+        var llm = CreateSuccessfulLlm();
         var logger = new Mock<ILogger<ProcessScoringUseCase>>();
         var sut = new ProcessScoringUseCase(db, llm.Object, logger.Object);
 
-        // Daily limit of 1
+        // Daily limit of 1 — should only process one job
         await sut.ExecuteAsync(dailyLimit: 1, batchSize: 10);
 
-        // Should have 1 completed and 1 pending
         Assert.Equal(1, db.ScoringJobs.Count(j => j.StatusId == ScoringJobStatus.Completed));
         Assert.Equal(1, db.ScoringJobs.Count(j => j.StatusId == ScoringJobStatus.Pending));
     }
@@ -150,28 +145,23 @@ public class ProcessScoringUseCaseTests
         await using var db = new TestAppDbContext();
         var ticker = new Ticker { Id = 1, Symbol = "T", CompanyName = "Test" };
         db.Ticker.Add(ticker);
-        
-        // Add 3 jobs
-        for(int i = 1; i <= 3; i++)
+
+        for (int i = 1; i <= 3; i++)
         {
-            var art = new Article { Id = i, Title = "T"+i, Url = "U"+i, CreatedAt = DateTime.UtcNow };
-            db.Artice.Add(art);
-            db.ScoringJobs.Add(new ScoringJob 
-            { 
-                Id = i, TickerId = 1, ArticleId = i, StatusId = ScoringJobStatus.Pending, 
-                CreatedAt = DateTime.UtcNow, Ticker = ticker, Article = art 
+            var art = new Article { Id = i, Title = "T" + i, Url = "U" + i, CreatedAt = DateTime.UtcNow };
+            db.Article.Add(art);
+            db.ScoringJobs.Add(new ScoringJob
+            {
+                Id = i, TickerId = 1, ArticleId = i, StatusId = ScoringJobStatus.Pending,
+                CreatedAt = DateTime.UtcNow, Ticker = ticker, Article = art
             });
         }
         await db.SaveChangesAsync();
 
-        var llm = new Mock<ISentimentLLM>();
-        llm.Setup(x => x.ScoreArticles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SentimentResultDto { ScoreLabel = "Neutral" });
-
+        var llm = CreateSuccessfulLlm();
         var logger = new Mock<ILogger<ProcessScoringUseCase>>();
         var sut = new ProcessScoringUseCase(db, llm.Object, logger.Object);
 
-        // Batch size 2. Should process 2, then 1.
         await sut.ExecuteAsync(dailyLimit: 10, batchSize: 2);
 
         Assert.Equal(3, db.ScoringJobs.Count(j => j.StatusId == ScoringJobStatus.Completed));

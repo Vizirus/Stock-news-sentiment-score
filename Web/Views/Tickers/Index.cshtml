@@ -1,0 +1,184 @@
+@model Web.Models.TickersViewModel
+@{
+    ViewData["Title"] = "Tickers";
+
+    string ScoreClass(decimal s) => s switch {
+        > 0.2m  => "score-positive",
+        < -0.2m => "score-negative",
+        _       => "score-neutral"
+    };
+
+    string BadgeClass(string label) => label.ToLower() switch {
+        "very positive" => "very-positive",
+        "positive"      => "positive",
+        "negative"      => "negative",
+        "very negative" => "very-negative",
+        _               => "neutral"
+    };
+
+    string TrendColor(string trend) => trend switch {
+        "↗" or "↑" => "var(--positive-color)",
+        "↘" or "↓" => "var(--negative-color)",
+        _           => "var(--neutral-color)"
+    };
+}
+
+<div class="page-header">
+    <h1 class="page-title">Tracked Tickers</h1>
+</div>
+
+<!-- Summary KPIs -->
+<div class="kpi-grid" style="grid-template-columns: repeat(4,1fr); margin-bottom: 22px;">
+    <div class="kpi-card">
+        <div class="kpi-label">Total Tickers</div>
+        <div class="kpi-value accent-teal">@Model.Tickers.Count</div>
+        <div class="kpi-sub">actively tracked</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Avg Portfolio Sentiment</div>
+        <div class="kpi-value accent-blue">@Model.Tickers.Average(t => t.AvgSentiment).ToString("+0.00;-0.00;0.00")</div>
+        <div class="kpi-sub">across all tickers</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Most Positive</div>
+        @{ var mostPos = Model.Tickers.OrderByDescending(t => t.AvgSentiment).First(); }
+        <div class="kpi-value" style="color:var(--positive-color);">@mostPos.Symbol</div>
+        <div class="kpi-sub">@mostPos.AvgSentiment.ToString("+0.00;-0.00;0.00") avg sentiment</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Most Negative</div>
+        @{ var mostNeg = Model.Tickers.OrderBy(t => t.AvgSentiment).First(); }
+        <div class="kpi-value" style="color:var(--negative-color);">@mostNeg.Symbol</div>
+        <div class="kpi-sub">@mostNeg.AvgSentiment.ToString("+0.00;-0.00;0.00") avg sentiment</div>
+    </div>
+</div>
+
+<!-- Tickers Table -->
+<div class="panel">
+    <div class="panel-header">
+        <span class="panel-title">All Tracked Tickers</span>
+        <div style="display:flex;gap:8px;">
+            <div class="search-box" style="min-width:200px;">
+                <button type="button" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;" onclick="filterTable('tickerSearch','tickerTable')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </button>
+                <input type="text" id="tickerSearch" placeholder="Filter tickers..." oninput="filterTable('tickerSearch','tickerTable')" />
+            </div>
+            <button class="btn btn-primary" onclick="openModal('addTickerModal')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Ticker
+            </button>
+        </div>
+    </div>
+
+    <table class="data-table" id="tickerTable">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Company Name</th>
+                <th>Avg Sentiment</th>
+                <th>Total Articles</th>
+                <th>Latest Score</th>
+                <th>Latest Label</th>
+                <th>Trend</th>
+                <th>Last Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model.Tickers)
+            {
+                <tr>
+                    <td><span style="font-weight:700;color:var(--accent-teal);font-family:monospace;">@t.Symbol</span></td>
+                    <td>@t.CompanyName</td>
+                    <td class="@ScoreClass(t.AvgSentiment)">@t.AvgSentiment.ToString("+0.00;-0.00;0.00")</td>
+                    <td>@t.Articles</td>
+                    <td class="@ScoreClass(t.LastScore)">@t.LastScore.ToString("+0.00;-0.00;0.00")</td>
+                    <td><span class="score-badge @BadgeClass(t.LastLabel)">@t.LastLabel</span></td>
+                    <td style="font-size:20px;color:@TrendColor(t.Trend);">@t.Trend</td>
+                    <td style="font-size:12px;color:var(--text-secondary);">@t.LastUpdated</td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <a href="/Dashboard?ticker=@t.Symbol" class="btn btn-ghost" style="padding:4px 10px;font-size:11px;">View</a>
+                            <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--accent-red);border-color:var(--accent-red);">Remove</button>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div class="table-footer">
+        <span class="table-footer-text">@Model.Tickers.Count tickers total</span>
+    </div>
+</div>
+
+<!-- Add Ticker Modal -->
+<div id="addTickerModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title">Track New Ticker</span>
+            <button class="modal-close" onclick="closeModal('addTickerModal')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <form id="addTickerForm" method="post" action="/Tickers/Add">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Ticker Symbol</label>
+                    <div class="search-box">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                        </svg>
+                        <input type="text" name="Symbol" placeholder="e.g. AAPL" required style="text-transform:uppercase;" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Company Name</label>
+                    <div class="search-box">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line>
+                        </svg>
+                        <input type="text" name="CompanyName" placeholder="e.g. Apple Inc." required />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addTickerModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Ticker</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function filterTable(inputId, tableId) {
+    const query = document.getElementById(inputId).value.toLowerCase();
+    document.querySelectorAll(`#${tableId} tbody tr`).forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
+}
+
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+    }
+});
+</script>
+}

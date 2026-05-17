@@ -11,7 +11,7 @@ public sealed class TestAppDbContext : DbContext, IAppDBContext
 
     public DbSet<Ticker> Ticker { get; set; } = null!;
     public DbSet<ArticleScore> ArticleScores { get; set; } = null!;
-    public DbSet<Article> Artice { get; set; } = null!;
+    public DbSet<Article> Article { get; set; } = null!;
     public DbSet<ScoringJob> ScoringJobs { get; set; } = null!;
     public DbSet<TickerDailySummary> TickerDailySummaries { get; set; } = null!;
 
@@ -27,9 +27,9 @@ public sealed class TestAppDbContext : DbContext, IAppDBContext
         optionsBuilder.UseSqlite(_connection);
     }
 
-    async Task IAppDBContext.SaveChangesAsync(CancellationToken token)
+    async Task<int> IAppDBContext.SaveChangesAsync(CancellationToken token)
     {
-        await base.SaveChangesAsync(token);
+        return await base.SaveChangesAsync(token);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

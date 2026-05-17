@@ -12,6 +12,7 @@
           "Microsoft.EntityFrameworkCore": "9.0.15",
           "Microsoft.EntityFrameworkCore.Design": "9.0.15",
           "Microsoft.EntityFrameworkCore.SqlServer": "9.0.15",
+          "Microsoft.EntityFrameworkCore.Sqlite": "9.0.15",
           "Microsoft.Extensions.Http": "9.0.15"
         },
         "runtime": {

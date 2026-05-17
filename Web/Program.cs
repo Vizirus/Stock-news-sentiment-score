@@ -1,29 +1,52 @@
+using Application;
+using Infrastructure;
+using Infrastructure.DB;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// Register Options
+builder.Services.Configure<Application.Options.ProcessingLimitsOptions>(
+    builder.Configuration.GetSection("ProcessingLimits"));
+
+// Register Application (Use Cases)
+builder.Services.AddApplication();
+
+// Register Infrastructure (AppDbContext, HttpClients, etc.)
+builder.Services.AddInfrastructure(builder.Configuration);
+
 var app = builder.Build();
+
+// Seed the SQLite development database on startup
+if (app.Environment.IsDevelopment())
+{
+    await DbSeeder.SeedAsync(app.Services);
+}
+
+// Initialize Runtime Settings Cache
+using (var scope = app.Services.CreateScope())
+{
+    var settingsService = scope.ServiceProvider.GetRequiredService<Application.Interfaces.IRuntimeSettingsService>();
+    await settingsService.ReloadAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseRouting();
-
 app.UseAuthorization();
-
 app.MapStaticAssets();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
+    pattern: "{controller=Dashboard}/{action=Index}/{id?}")
     .WithStaticAssets();
-
 
 app.Run();

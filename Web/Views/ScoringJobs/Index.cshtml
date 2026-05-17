@@ -1,0 +1,144 @@
+@model Web.Models.ScoringJobsViewModel
+@{
+    ViewData["Title"] = "Scoring Jobs";
+
+    string BadgeClass(string label) => label?.ToLower() switch {
+        "very positive" => "very-positive",
+        "positive"      => "positive",
+        "negative"      => "negative",
+        "very negative" => "very-negative",
+        _               => "neutral"
+    } ?? "neutral";
+
+    string ScoreClass(decimal? s) => s switch {
+        > 0.2m  => "score-positive",
+        < -0.2m => "score-negative",
+        null    => "",
+        _       => "score-neutral"
+    };
+}
+
+<div class="page-header">
+    <h1 class="page-title">Scoring Jobs</h1>
+</div>
+
+<!-- Status KPIs -->
+<div class="kpi-grid" style="grid-template-columns: repeat(4,1fr); margin-bottom: 22px;">
+    <div class="kpi-card">
+        <div class="kpi-label">Completed</div>
+        <div class="kpi-value" style="color:var(--positive-color);">@Model.TotalCompleted</div>
+        <div class="kpi-sub">jobs finished successfully</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Pending</div>
+        <div class="kpi-value" style="color:var(--accent-yellow);">@Model.TotalPending</div>
+        <div class="kpi-sub">waiting in queue</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Failed</div>
+        <div class="kpi-value" style="color:var(--accent-red);">@Model.TotalFailed</div>
+        <div class="kpi-sub">require attention</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Success Rate</div>
+        @{
+            var total = Model.TotalCompleted + Model.TotalFailed;
+            var rate = total > 0 ? (Model.TotalCompleted * 100.0 / total) : 100.0;
+        }
+        <div class="kpi-value" style="color:var(--accent-teal);">@rate.ToString("0.0")%</div>
+        <div class="kpi-sub">of all processed jobs</div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" id="filterAll" onclick="filterJobs('all')" style="font-size:12px;">All</button>
+        <button class="btn btn-ghost" id="filterPending" onclick="filterJobs('pending')" style="font-size:12px;color:var(--accent-yellow);border-color:var(--accent-yellow);">Pending (@Model.TotalPending)</button>
+        <button class="btn btn-ghost" id="filterFailed" onclick="filterJobs('failed')" style="font-size:12px;color:var(--accent-red);border-color:var(--accent-red);">Failed (@Model.TotalFailed)</button>
+        <button class="btn btn-ghost" id="filterCompleted" onclick="filterJobs('completed')" style="font-size:12px;color:var(--positive-color);border-color:var(--positive-color);">Completed</button>
+    </div>
+    <form method="post" action="/ScoringJobs/RetryAll" style="margin:0;">
+        <button type="submit" class="btn btn-secondary" style="gap:7px;" @(Model.TotalFailed > 0 ? "" : "disabled")>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            Retry All Failed
+        </button>
+    </form>
+</div>
+
+<!-- Jobs Table -->
+<div class="panel">
+    <div class="panel-header">
+        <span class="panel-title">Job Queue</span>
+        <span style="font-size:12px;color:var(--text-muted);">@Model.Jobs.Count entries shown</span>
+    </div>
+
+    <table class="data-table" id="jobsTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Ticker</th>
+                <th>Article</th>
+                <th>Created At</th>
+                <th>Started At</th>
+                <th>Completed At</th>
+                <th>Status</th>
+                <th>Score</th>
+                <th>Label</th>
+                <th>Error</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var j in Model.Jobs)
+            {
+                <tr data-status="@j.Status.ToLower()">
+                    <td style="color:var(--text-muted);font-size:12px;">@j.Id</td>
+                    <td><span style="font-weight:700;color:var(--accent-teal);font-family:monospace;font-size:12px;">@j.Ticker</span></td>
+                    <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@j.ArticleTitle">@j.ArticleTitle</td>
+                    <td style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">@j.CreatedAt</td>
+                    <td style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">@(j.StartedAt ?? "—")</td>
+                    <td style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">@(j.CompletedAt ?? "—")</td>
+                    <td>
+                        @{
+                            var statusClass = j.Status.ToLower() switch {
+                                "completed" => "very-positive",
+                                "pending"   => "neutral",
+                                "failed"    => "negative",
+                                _           => "neutral"
+                            };
+                        }
+                        <span class="score-badge @statusClass">@j.Status</span>
+                    </td>
+                    <td class="@ScoreClass(j.Score)">@(j.Score.HasValue ? j.Score.Value.ToString("+0.00;-0.00;0.00") : "—")</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(j.Label))
+                        {
+                            <span class="score-badge @BadgeClass(j.Label)">@j.Label</span>
+                        }
+                        else { <span style="color:var(--text-muted);">—</span> }
+                    </td>
+                    <td style="font-size:11px;color:var(--accent-red);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@j.ErrorMessage">
+                        @(j.ErrorMessage ?? "")
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="table-footer">
+        <span class="table-footer-text">Showing @Model.Jobs.Count entries</span>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function filterJobs(status) {
+    document.querySelectorAll('#jobsTable tbody tr').forEach(row => {
+        row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+    });
+}
+</script>
+}

@@ -30,7 +30,7 @@ public class GetDashboardDataUseCaseTests
         await using var db = new TestAppDbContext();
         var now = DateTime.UtcNow;
         db.Ticker.Add(new Ticker { Id = 1, Symbol = "TSLA", CompanyName = "Tesla" });
-        db.Artice.Add(new Article
+        db.Article.Add(new Article
         {
             Id = 2,
             Title = "Title",

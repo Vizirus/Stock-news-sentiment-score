@@ -36,7 +36,7 @@ public class RawDataCleanUpUseCase
         // Since Articles are the parent of ScoringJobs and ArticleScores, those child records 
         // will be cascade-deleted by the DB if cascading is set up, but we explicitly deleted them above 
         // to be safe and free up space cleanly.
-        var oldArticlesCount = await _dbContext.Artice
+        var oldArticlesCount = await _dbContext.Article
             .Where(a => a.CreatedAt < cutoffDate)
             .ExecuteDeleteAsync(cancellationToken);
 

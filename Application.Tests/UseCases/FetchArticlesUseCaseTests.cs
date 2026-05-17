@@ -15,7 +15,7 @@ public class FetchArticlesUseCaseTests
     {
         await using var db = new TestAppDbContext();
         db.Ticker.Add(new Ticker { Id = 1, Symbol = "AAPL", CompanyName = "Apple" });
-        db.Artice.Add(new Article
+        db.Article.Add(new Article
         {
             Id = 10,
             Title = "Existing title",
@@ -28,7 +28,7 @@ public class FetchArticlesUseCaseTests
         await db.SaveChangesAsync();
 
         var newsApi = new Mock<INewsAPI>(MockBehavior.Strict);
-        newsApi.Setup(x => x.GetArticlesForCompany("AAPL", It.IsAny<CancellationToken>()))
+        newsApi.Setup(x => x.GetArticlesForCompany(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<FetchedArticleDto>
             {
                 new() { Title = "Existing title", Url = "https://example.com/new-1", SourceName = "src", CreatedAt = DateTime.UtcNow, PublishedAt = DateTime.UtcNow },
@@ -39,7 +39,7 @@ public class FetchArticlesUseCaseTests
 
         await sut.ExecuteAsync();
 
-        Assert.Equal(2, db.Artice.Count());
+        Assert.Equal(2, db.Article.Count());
         Assert.Single(db.ScoringJobs);
         Assert.Equal(ScoringJobStatus.Pending, db.ScoringJobs.Single().StatusId);
         Assert.Equal(1, db.ScoringJobs.Single().TickerId);
@@ -53,7 +53,7 @@ public class FetchArticlesUseCaseTests
         await db.SaveChangesAsync();
 
         var newsApi = new Mock<INewsAPI>(MockBehavior.Strict);
-        newsApi.Setup(x => x.GetArticlesForCompany("AAPL", It.IsAny<CancellationToken>()))
+        newsApi.Setup(x => x.GetArticlesForCompany(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("api failed"));
 
         var sut = new FetchArticlesUseCase(db, newsApi.Object);
@@ -66,11 +66,11 @@ public class FetchArticlesUseCaseTests
     {
         await using var db = new TestAppDbContext();
         db.Ticker.Add(new Ticker { Id = 1, Symbol = "MSFT", CompanyName = "Microsoft" });
-        db.Artice.Add(new Article { Title = "Duplicate Title", Url = "https://old.com" });
+        db.Article.Add(new Article { Title = "Duplicate Title", Url = "https://old.com" });
         await db.SaveChangesAsync();
 
         var newsApi = new Mock<INewsAPI>();
-        newsApi.Setup(x => x.GetArticlesForCompany("MSFT", It.IsAny<CancellationToken>()))
+        newsApi.Setup(x => x.GetArticlesForCompany(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<FetchedArticleDto> 
             { 
                 new() { Title = "Duplicate Title", Url = "https://new.com", PublishedAt = DateTime.UtcNow } 
@@ -80,7 +80,7 @@ public class FetchArticlesUseCaseTests
         await sut.ExecuteAsync();
 
         // Should still be only 1 article (the existing one)
-        Assert.Single(db.Artice);
+        Assert.Single(db.Article);
         Assert.Empty(db.ScoringJobs);
     }
 
@@ -92,13 +92,13 @@ public class FetchArticlesUseCaseTests
         await db.SaveChangesAsync();
 
         var newsApi = new Mock<INewsAPI>();
-        newsApi.Setup(x => x.GetArticlesForCompany("GOOGL", It.IsAny<CancellationToken>()))
+        newsApi.Setup(x => x.GetArticlesForCompany(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<FetchedArticleDto>());
 
         var sut = new FetchArticlesUseCase(db, newsApi.Object);
         await sut.ExecuteAsync();
 
-        Assert.Empty(db.Artice);
+        Assert.Empty(db.Article);
         Assert.Empty(db.ScoringJobs);
     }
 }

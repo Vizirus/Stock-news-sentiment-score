@@ -1,3 +1,4 @@
+using Application.DTOs;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
@@ -13,8 +14,8 @@ public class ProcessScoringUseCase
     private readonly ILogger<ProcessScoringUseCase> _logger;
 
     public ProcessScoringUseCase(
-        IAppDBContext dbContext, 
-        ISentimentLLM sentimentLlm, 
+        IAppDBContext dbContext,
+        ISentimentLLM sentimentLlm,
         ILogger<ProcessScoringUseCase> logger)
     {
         _dbContext = dbContext;
@@ -25,16 +26,13 @@ public class ProcessScoringUseCase
     public async Task ExecuteAsync(int dailyLimit, int batchSize = 20, CancellationToken cancellationToken = default)
     {
         if (dailyLimit <= 0)
-        {
             throw new ArgumentOutOfRangeException(nameof(dailyLimit), "Daily limit must be greater than zero.");
-        }
 
         if (batchSize <= 0)
-        {
             throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than zero.");
-        }
+
         var today = DateTime.UtcNow.Date;
-        
+
         var processedToday = await _dbContext.ScoringJobs
             .Where(j =>
                 j.StartedAt >= today &&
@@ -65,79 +63,117 @@ public class ProcessScoringUseCase
 
             _logger.LogInformation("Fetched {Count} pending jobs. Processing batch...", jobs.Count);
 
+            // --- Validate jobs before sending to LLM ---
+            var now = DateTime.UtcNow;
+            var validJobs = new List<ScoringJob>();
+
             foreach (var job in jobs)
             {
+                job.StartedAt = now;
+
+                if (job.Ticker == null)
+                {
+                    job.StatusId = ScoringJobStatus.Failed;
+                    job.ErrorMessage = "Ticker navigation property is missing.";
+                    job.CompletdAt = now;
+                    processedToday++;
+                    continue;
+                }
+
+                if (job.Article == null)
+                {
+                    job.StatusId = ScoringJobStatus.Failed;
+                    job.ErrorMessage = "Article navigation property is missing.";
+                    job.CompletdAt = now;
+                    processedToday++;
+                    continue;
+                }
+
+                validJobs.Add(job);
+            }
+
+            if (validJobs.Count == 0)
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                continue;
+            }
+
+            // --- Group valid jobs by Ticker for batch LLM calls ---
+            var jobsByTicker = validJobs.GroupBy(j => j.TickerId);
+
+            foreach (var tickerGroup in jobsByTicker)
+            {
+                var tickerJobs = tickerGroup.ToList();
+                var ticker = tickerJobs[0].Ticker!;
+
+                // Build the input batch with an Index for result matching
+                var articleInputs = tickerJobs
+                    .Select((j, i) => new ArticleInputDto
+                    {
+                        Index = i,
+                        Title = j.Article!.Title,
+                        Description = j.Article.Description
+                    })
+                    .ToList();
+
                 try
                 {
-                    job.StartedAt = DateTime.UtcNow;
-
-                    // Note: Your ISentimentLLM expects Ticker object properties and Url.
-                    // If Ticker or Article is null (due to nullable navigation properties), we handle it.
-                    if (job.Ticker == null)
-                    {
-                        job.StatusId = ScoringJobStatus.Failed;
-                        job.ErrorMessage = "Ticker data is missing.";
-                        job.CompletdAt = DateTime.UtcNow;
-                        continue;
-                    }
-                    if (job.Article == null)
-                    {
-                        job.StatusId = ScoringJobStatus.Failed;
-                        job.ErrorMessage = "Article data is missing.";
-                        job.CompletdAt = DateTime.UtcNow;
-                        continue;
-                    }
-                    var tickerSymbol = job.Ticker.Symbol;
-                    var companyName = job.Ticker.CompanyName;
-                    var title = job.Article.Title;
-                    var description = job.Article.Description;
-                    var url = job.Article.Url;
-
-                    var result = await _sentimentLlm.ScoreArticles(
-                        tickerSymbol, 
-                        companyName, 
-                        title, 
-                        description, 
-                        url, 
+                    var results = await _sentimentLlm.ScoreArticlesAsync(
+                        ticker.Symbol,
+                        ticker.CompanyName,
+                        articleInputs,
                         cancellationToken);
 
-                    var articleScore = new ArticleScore
+                    // Match results back to jobs by Index
+                    var resultByIndex = results.ToDictionary(r => r.Index);
+
+                    for (int i = 0; i < tickerJobs.Count; i++)
                     {
-                        ArticleId = job.ArticleId,
-                        TickerId = job.TickerId,
-                        Score = result.Score,
-                        ScoreLabel = result.ScoreLabel, // DTO and Entity are now both strings!
-                        Confidence = result.Confidence,
-                        ScoredAt = DateTime.UtcNow
-                    };
+                        var job = tickerJobs[i];
 
-                    _dbContext.ArticleScores.Add(articleScore);
+                        if (!resultByIndex.TryGetValue(i, out var result))
+                        {
+                            job.StatusId = ScoringJobStatus.Failed;
+                            job.ErrorMessage = $"LLM did not return a result for article at index {i}.";
+                            job.CompletdAt = DateTime.UtcNow;
+                            processedToday++;
+                            continue;
+                        }
 
-                    job.StatusId = ScoringJobStatus.Completed;
-                    job.CompletdAt = DateTime.UtcNow; // Using your modified typo property 'CompltedAt'
-                    
-                    processedToday++;
+                        _dbContext.ArticleScores.Add(new ArticleScore
+                        {
+                            ArticleId = job.ArticleId,
+                            TickerId = job.TickerId,
+                            Score = result.Score,
+                            ScoreLabel = result.ScoreLabel,
+                            Confidence = result.Confidence,
+                            ScoredAt = DateTime.UtcNow
+                        });
+
+                        job.StatusId = ScoringJobStatus.Completed;
+                        job.CompletdAt = DateTime.UtcNow;
+                        processedToday++;
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to score job {JobId}", job.Id);
-                    
-                    job.StatusId = ScoringJobStatus.Failed;
-                    job.ErrorMessage = "An unknow error happend during the program execution! \nSomething happend while scoring the articles";
-                    job.CompletdAt = DateTime.UtcNow;
-                    
-                    processedToday++; 
+                    _logger.LogError(ex, "Failed to score batch for ticker {Ticker}", ticker.Symbol);
+
+                    foreach (var job in tickerJobs)
+                    {
+                        job.StatusId = ScoringJobStatus.Failed;
+                        job.ErrorMessage = $"Batch scoring failed: {ex.Message}";
+                        job.CompletdAt = DateTime.UtcNow;
+                        processedToday++;
+                    }
                 }
             }
 
-            // Await the new parameterless SaveChangesAsync Task signature
             await _dbContext.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("Batch saved successfully. Processed today: {Count}/{Limit}", processedToday, dailyLimit);
+            _logger.LogInformation("Batch saved. Processed today: {Count}/{Limit}", processedToday, dailyLimit);
         }
 
         if (processedToday >= dailyLimit)
-        {
             _logger.LogWarning("Daily LLM limit of {Limit} reached. Halting scoring.", dailyLimit);
-        }
     }
 }

@@ -1,0 +1,172 @@
+@model Web.Models.SettingsViewModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="page-header">
+    <h1 class="page-title">Settings</h1>
+</div>
+
+<div style="max-width: 600px; display: flex; flex-direction: column; gap: 18px;">
+
+    @if (Model.Success)
+    {
+        <div style="background: rgba(106, 191, 105, 0.1); border: 1px solid var(--positive-color); color: var(--positive-color); padding: 12px; border-radius: var(--radius-sm); font-size: 13px; display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            Settings updated successfully!
+        </div>
+    }
+
+    <!-- Processing Limits -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Processing Limits</span>
+        </div>
+
+        <form method="post" action="/Settings/UpdateSettings" style="margin: 0; display: flex; flex-direction: column; gap: 20px;">
+
+            <div class="settings-field">
+                <label class="settings-label" for="dailyLimitInput">Daily LLM Call Limit</label>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <input type="range" id="dailyLimitSlider" min="1" max="1000" value="@Model.DailyLlmCallLimit"
+                           oninput="syncInput('dailyLimitSlider','dailyLimitInput')" style="flex:1;" />
+                    <input type="number" id="dailyLimitInput" name="DailyLlmCallLimit" class="filter-select" style="width: 90px; text-align: center;"
+                           min="1" max="1000" value="@Model.DailyLlmCallLimit"
+                           oninput="syncSlider('dailyLimitInput','dailyLimitSlider')" />
+                </div>
+                <p class="settings-hint">Maximum scoring jobs processed per day. Limit: <strong>1,000</strong> (free tier cap).</p>
+            </div>
+
+            <div class="settings-field">
+                <label class="settings-label" for="batchSizeInput">Batch Size per LLM Call</label>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <input type="range" id="batchSizeSlider" min="1" max="50" value="@Model.BatchSize"
+                           oninput="syncInput('batchSizeSlider','batchSizeInput')" style="flex:1;" />
+                    <input type="number" id="batchSizeInput" name="BatchSize" class="filter-select" style="width: 90px; text-align: center;"
+                           min="1" max="50" value="@Model.BatchSize"
+                           oninput="syncSlider('batchSizeInput','batchSizeSlider')" />
+                </div>
+                <p class="settings-hint">Articles grouped per Gemini API request. Higher = fewer API calls. Max: <strong>50</strong>.</p>
+            </div>
+
+            <div class="settings-field">
+                <label class="settings-label" for="fetchIntervalInput">Article Fetch Interval (hours)</label>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <input type="range" id="fetchIntervalSlider" min="1" max="24" value="@Model.FetchIntervalHours"
+                           oninput="syncInput('fetchIntervalSlider','fetchIntervalInput')" style="flex:1;" />
+                    <input type="number" id="fetchIntervalInput" name="FetchIntervalHours" class="filter-select" style="width: 90px; text-align: center;"
+                           min="1" max="24" value="@Model.FetchIntervalHours"
+                           oninput="syncSlider('fetchIntervalInput','fetchIntervalSlider')" />
+                </div>
+                <p class="settings-hint">How often the worker fetches new articles from Finnhub. Max: <strong>24h</strong>.</p>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-yellow)" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span style="font-size: 12px; color: var(--text-secondary);">
+                    Estimated daily API calls: <strong id="estimatedCalls" style="color: var(--accent-teal);">0</strong>
+                    &nbsp;·&nbsp; Budget used: <strong id="budgetUsed" style="color: var(--accent-teal);">0%</strong>
+                </span>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: fit-content;">Save Settings</button>
+        </form>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">System Information</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="info-row">
+                <span class="info-key">LLM Provider</span>
+                <span class="info-val">Google Gemini 2.0 Flash</span>
+            </div>
+            <div class="info-row">
+                <span class="info-key">News Source</span>
+                <span class="info-val">Finnhub Company News API</span>
+            </div>
+            <div class="info-row">
+                <span class="info-key">Database</span>
+                <span class="info-val">SQLite (development)</span>
+            </div>
+            <div class="info-row">
+                <span class="info-key">Environment</span>
+                <span class="info-val" style="color: var(--accent-yellow);">Development</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Styles {
+<style>
+.settings-field { display: flex; flex-direction: column; gap: 7px; }
+.settings-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.settings-hint { font-size: 12px; color: var(--text-muted); margin: 0; }
+
+input[type="range"] {
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent-teal);
+    cursor: pointer;
+    border: 2px solid var(--bg-primary);
+    transition: var(--transition);
+}
+input[type="range"]::-webkit-slider-thumb:hover { background: var(--accent-blue); }
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 13px;
+}
+.info-row:last-child { border-bottom: none; }
+.info-key { color: var(--text-secondary); }
+.info-val { color: var(--text-primary); font-weight: 500; }
+</style>
+}
+
+@section Scripts {
+<script>
+function syncInput(sliderId, inputId) {
+    document.getElementById(inputId).value = document.getElementById(sliderId).value;
+    updateEstimate();
+}
+function syncSlider(inputId, sliderId) {
+    const input = document.getElementById(inputId);
+    const slider = document.getElementById(sliderId);
+    const val = Math.min(Math.max(parseInt(input.value) || 0, parseInt(slider.min)), parseInt(slider.max));
+    input.value = val;
+    slider.value = val;
+    updateEstimate();
+}
+function updateEstimate() {
+    const limit = parseInt(document.getElementById('dailyLimitInput').value) || 0;
+    const batch = parseInt(document.getElementById('batchSizeInput').value) || 1;
+    const calls = Math.ceil(limit / batch);
+    const pct = Math.round((limit / 1000) * 100);
+    document.getElementById('estimatedCalls').textContent = calls;
+    document.getElementById('budgetUsed').textContent = pct + '%';
+}
+updateEstimate();
+</script>
+}

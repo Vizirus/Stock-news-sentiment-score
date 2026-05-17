@@ -1,0 +1,301 @@
+@model Web.Models.SummariesViewModel
+@{
+    ViewData["Title"] = "Summaries";
+
+    string ScoreClass(decimal s) => s switch {
+        > 0.2m  => "score-positive",
+        < -0.2m => "score-negative",
+        _       => "score-neutral"
+    };
+
+    string BadgeClass(string label) => label.ToLower() switch {
+        "positive" => "positive",
+        "negative" => "negative",
+        _          => "neutral"
+    };
+}
+
+<div class="page-header">
+    <h1 class="page-title">Daily Summaries</h1>
+</div>
+
+<!-- Filter Bar -->
+<form method="get" action="/Summaries" id="filterForm">
+    <div class="filter-bar" style="margin-bottom: 22px;">
+
+        <!-- Ticker -->
+        <div class="filter-group">
+            <span class="filter-label">Ticker</span>
+            <select class="filter-select" name="ticker" id="tickerSelect" onchange="this.form.submit()">
+                <option value="All Tickers" selected="@(Model.SelectedTicker == "All Tickers" ? "selected" : null)">All Tickers</option>
+                @foreach (var t in Model.AvailableTickers)
+                {
+                    <option value="@t" selected="@(t == Model.SelectedTicker ? "selected" : null)">@t</option>
+                }
+            </select>
+        </div>
+
+        <input type="hidden" name="dateMode" id="dateModeInput" value="@ViewData["DateMode"]" />
+
+        <!-- Date Mode Toggle -->
+        <div class="filter-group">
+            <span class="filter-label">Date Mode</span>
+            <div class="date-mode-toggle" id="dateModeToggle">
+                <button type="button" class="mode-btn @(ViewData["DateMode"]?.ToString() == "single" ? "active" : "")" id="btnSingle" onclick="setMode('single')">Single Date</button>
+                <button type="button" class="mode-btn @(ViewData["DateMode"]?.ToString() == "range" ? "active" : "")" id="btnRange" onclick="setMode('range')">Date Range</button>
+            </div>
+        </div>
+
+        <!-- Single Date Picker -->
+        <div class="filter-group" id="singleDateGroup" style="display:@(ViewData["DateMode"]?.ToString() == "single" ? "block" : "none");">
+            <span class="filter-label">Date</span>
+            <input type="date" class="filter-select" name="singleDate" id="singleDate"
+                   value="@ViewData["SingleDate"]" max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" onchange="this.form.submit()" style="min-width:160px;" />
+        </div>
+
+        <!-- Date Range Pickers -->
+        <div class="filter-group" id="rangeFromGroup" style="display:@(ViewData["DateMode"]?.ToString() == "range" ? "block" : "none");">
+            <span class="filter-label">From</span>
+            <input type="date" class="filter-select" name="rangeFrom" id="rangeFrom"
+                   value="@ViewData["RangeFrom"]" max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" onchange="this.form.submit()" style="min-width:150px;" />
+        </div>
+        <div class="filter-group" id="rangeToGroup" style="display:@(ViewData["DateMode"]?.ToString() == "range" ? "block" : "none");">
+            <span class="filter-label">To</span>
+            <input type="date" class="filter-select" name="rangeTo" id="rangeTo"
+                   value="@ViewData["RangeTo"]" max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" onchange="this.form.submit()" style="min-width:150px;" />
+        </div>
+
+        <div class="filter-actions">
+            <button type="button" class="btn btn-ghost" onclick="exportCsv()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export CSV
+            </button>
+        </div>
+    </div>
+</form>
+
+<!-- KPIs -->
+<div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 22px;">
+    <div class="kpi-card">
+        <div class="kpi-label">Ticker</div>
+        <div class="kpi-value accent-teal">@Model.SelectedTicker</div>
+        <div class="kpi-sub">@Model.CompanyName</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Period Avg Score</div>
+        <div class="kpi-value accent-blue">@(Model.Summaries.Any() ? Model.Summaries.Average(s => s.AvgScore).ToString("+0.00;-0.00;0.00") : "N/A")</div>
+        <div class="kpi-sub">over shown period</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Total Articles</div>
+        <div class="kpi-value">@(Model.Summaries.Any() ? Model.Summaries.Sum(s => s.ArticleCount).ToString() : "0")</div>
+        <div class="kpi-sub">in selected period</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Most Active Day</div>
+        @if (Model.Summaries.Any())
+        {
+            var topDay = Model.Summaries.OrderByDescending(s => s.ArticleCount).First();
+            <div class="kpi-value" style="font-size: 16px; color: var(--accent-yellow);">@topDay.Date</div>
+            <div class="kpi-sub">@topDay.ArticleCount articles</div>
+        }
+        else
+        {
+            <div class="kpi-value" style="font-size: 16px; color: var(--text-muted);">None</div>
+            <div class="kpi-sub">0 articles</div>
+        }
+    </div>
+</div>
+
+<!-- Charts Row — hidden in Single Date mode -->
+<div id="chartsRow" class="charts-grid" style="margin-bottom: 22px; display:@(ViewData["DateMode"]?.ToString() == "single" ? "none" : "grid");">
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Sentiment Trend — @Model.SelectedTicker</span>
+        </div>
+        <div class="chart-container" style="height: 240px;">
+            <canvas id="summaryTrendChart"></canvas>
+        </div>
+    </div>
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Article Breakdown</span>
+        </div>
+        <div class="chart-container" style="height: 240px;">
+            <canvas id="breakdownChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Table -->
+<div class="panel">
+    <div class="panel-header">
+        <span class="panel-title" id="tableTitle">@(ViewData["DateMode"]?.ToString() == "single" ? "Single Day Summary" : "Daily Summary Data")</span>
+        <span style="font-size: 12px; color: var(--text-muted);" id="tableSubtitle">@Model.Summaries.Count days shown</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Avg Score</th>
+                <th>Label</th>
+                <th>Total Articles</th>
+                <th>Positive</th>
+                <th>Neutral</th>
+                <th>Negative</th>
+                <th>Sentiment Bar</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model.Summaries)
+            {
+                var posW  = s.ArticleCount > 0 ? (s.PosCount  * 100 / s.ArticleCount) : 0;
+                var neutW = s.ArticleCount > 0 ? (s.NeutCount * 100 / s.ArticleCount) : 0;
+                var negW  = s.ArticleCount > 0 ? (s.NegCount  * 100 / s.ArticleCount) : 0;
+                <tr>
+                    <td style="white-space:nowrap; font-size:12px; color:var(--text-secondary);">@s.Date</td>
+                    <td class="@ScoreClass(s.AvgScore)">@s.AvgScore.ToString("+0.00;-0.00;0.00")</td>
+                    <td><span class="score-badge @BadgeClass(s.Label)">@s.Label</span></td>
+                    <td>@s.ArticleCount</td>
+                    <td style="color:var(--positive-color);">@s.PosCount</td>
+                    <td style="color:var(--neutral-color);">@s.NeutCount</td>
+                    <td style="color:var(--negative-color);">@s.NegCount</td>
+                    <td style="min-width:120px;">
+                        <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:var(--bg-secondary);">
+                            <div style="width:@posW%;  background:var(--positive-color);"></div>
+                            <div style="width:@neutW%; background:var(--neutral-color);"></div>
+                            <div style="width:@negW%;  background:var(--negative-color);"></div>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div class="table-footer">
+        <span class="table-footer-text">@Model.Summaries.Count days shown</span>
+    </div>
+</div>
+
+@section Styles {
+<style>
+.date-mode-toggle {
+    display: flex;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    gap: 3px;
+}
+.mode-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 5px 14px;
+    border-radius: calc(var(--radius-sm) - 2px);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+.mode-btn.active {
+    background: var(--accent-blue);
+    color: #fff;
+}
+.mode-btn:not(.active):hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+</style>
+}
+
+@section Scripts {
+<script>
+    const labels   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ChartLabels));
+    const scores   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ChartScores));
+    const posData  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Summaries.Select(s => s.PosCount).ToList()));
+    const neutData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Summaries.Select(s => s.NeutCount).ToList()));
+    const negData  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Summaries.Select(s => s.NegCount).ToList()));
+
+    const chartDefaults = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } }, tooltip: { backgroundColor: '#2a2a3e', borderColor: '#3a3a52', borderWidth: 1, titleColor: '#d4d4d4', bodyColor: '#9ca3af', padding: 10 } },
+    };
+
+    // Trend line chart
+    new Chart(document.getElementById('summaryTrendChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Avg Sentiment', data: scores,
+                borderColor: '#4ec9b0', backgroundColor: 'rgba(78,201,176,0.08)',
+                borderWidth: 2.5, tension: 0.35, fill: true,
+                pointBackgroundColor: scores.map(v => v > 0.2 ? '#6abf69' : v < -0.2 ? '#f44747' : '#dcdcaa'),
+                pointBorderColor: '#1e1e2e', pointBorderWidth: 2, pointRadius: 5,
+            }]
+        },
+        options: {
+            ...chartDefaults,
+            plugins: { ...chartDefaults.plugins, legend: { display: false } },
+            scales: {
+                x: { grid: { color: '#2e2e42' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
+                y: { min: -1, max: 1, grid: { color: '#2e2e42' }, ticks: { color: '#9ca3af', font: { size: 10 }, callback: v => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1) } }
+            }
+        }
+    });
+
+    // Stacked bar
+    new Chart(document.getElementById('breakdownChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Positive', data: posData,  backgroundColor: 'rgba(106,191,105,0.8)' },
+                { label: 'Neutral',  data: neutData, backgroundColor: 'rgba(220,220,170,0.7)' },
+                { label: 'Negative', data: negData,  backgroundColor: 'rgba(244,71,71,0.75)'  },
+            ]
+        },
+        options: {
+            ...chartDefaults,
+            scales: {
+                x: { stacked: true, grid: { color: '#2e2e42' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
+                y: { stacked: true, grid: { color: '#2e2e42' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
+            }
+        }
+    });
+
+    // --- Date Mode Toggle ---
+    function setMode(mode) {
+        const isSingle = mode === 'single';
+
+        document.getElementById('btnSingle').classList.toggle('active', isSingle);
+        document.getElementById('btnRange').classList.toggle('active', !isSingle);
+
+        document.getElementById('singleDateGroup').style.display  = isSingle  ? 'block' : 'none';
+        document.getElementById('rangeFromGroup').style.display   = !isSingle ? 'block' : 'none';
+        document.getElementById('rangeToGroup').style.display     = !isSingle ? 'block' : 'none';
+
+        // Update hidden input for form submission
+        document.getElementById('dateModeInput').value = mode;
+
+        // Auto-submit form when changing modes
+        document.getElementById('filterForm').submit();
+    }
+
+    function exportCsv() {
+        const form = document.getElementById('filterForm');
+        // Temporarily change action for export
+        const originalAction = form.action;
+        form.action = '/Summaries/Export';
+        form.submit();
+        // Restore original action
+        form.action = originalAction;
+    }
+</script>
+}

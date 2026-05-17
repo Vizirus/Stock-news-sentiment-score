@@ -5351,6 +5351,7 @@
       "Microsoft.EntityFrameworkCore >= 9.0.15",
       "Microsoft.EntityFrameworkCore.Design >= 9.0.15",
       "Microsoft.EntityFrameworkCore.SqlServer >= 9.0.15",
+      "Microsoft.EntityFrameworkCore.Sqlite >= 9.0.15",
       "Microsoft.Extensions.Http >= 9.0.15"
     ]
   },
@@ -5423,6 +5424,10 @@
             "target": "Package",
             "version": "[9.0.15, )"
           },
+          "Microsoft.EntityFrameworkCore.Sqlite": {
+            "target": "Package",
+            "version": "[9.0.15, )"
+          },
           "Microsoft.Extensions.Http": {
             "target": "Package",
             "version": "[9.0.15, )"
@@ -5444,7 +5449,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.313/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.314/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

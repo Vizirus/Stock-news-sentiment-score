@@ -1,9 +1,16 @@
 using Application.DTOs;
-using Domain.Entities;
 
 namespace Application.Interfaces;
 
 public interface ISentimentLLM
 {
-    Task<SentimentResultDto> ScoreArticles(string ticker, string companyName, string title, string description, string Url, CancellationToken token = default);
+    /// <summary>
+    /// Scores a batch of articles for a given company in a single API call.
+    /// Returns one result per input article, matched by Index.
+    /// </summary>
+    Task<List<SentimentResultDto>> ScoreArticlesAsync(
+        string ticker,
+        string companyName,
+        IReadOnlyList<ArticleInputDto> articles,
+        CancellationToken token = default);
 }

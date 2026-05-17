@@ -1,0 +1,221 @@
+@model Web.Models.ArticlesViewModel
+@{
+    ViewData["Title"] = "Articles";
+
+    string ScoreClass(decimal s) => s switch {
+        > 0.2m  => "score-positive",
+        < -0.2m => "score-negative",
+        _       => "score-neutral"
+    };
+
+    string BadgeClass(string label) => label.ToLower() switch {
+        "very positive" => "very-positive",
+        "positive"      => "positive",
+        "negative"      => "negative",
+        "very negative" => "very-negative",
+        _               => "neutral"
+    };
+}
+
+<div class="page-header">
+    <h1 class="page-title">Articles</h1>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid" style="grid-template-columns: repeat(4,1fr); margin-bottom: 22px;">
+    <div class="kpi-card">
+        <div class="kpi-label">Total Articles</div>
+        <div class="kpi-value accent-teal">@Model.TotalCount</div>
+        <div class="kpi-sub">in selected range</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Scored</div>
+        <div class="kpi-value accent-blue">@Model.Articles.Count(a => a.Score != 0)</div>
+        <div class="kpi-sub">articles with sentiment</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Avg Confidence</div>
+        <div class="kpi-value" style="color:var(--accent-yellow);">@Model.Articles.Average(a => a.Confidence).ToString("0.00")</div>
+        <div class="kpi-sub">model confidence</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Sources</div>
+        <div class="kpi-value">@Model.Articles.Select(a => a.Source).Distinct().Count()</div>
+        <div class="kpi-sub">unique news sources</div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<form id="filterForm" method="get" action="/Articles">
+    <div class="filter-bar" style="margin-bottom:18px; flex-wrap: wrap; gap: 12px;">
+        <div class="filter-group">
+            <span class="filter-label">Ticker</span>
+            <select name="ticker" class="filter-select" style="min-width:140px;" onchange="this.form.submit()">
+                <option value="">All Tickers</option>
+                @foreach(var t in Model.AvailableTickers)
+                {
+                    <option value="@t" selected="@(t == Model.SelectedTicker ? "selected" : null)">@t</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Label</span>
+            <select name="label" class="filter-select" style="min-width:140px;" onchange="this.form.submit()">
+                <option value="">All Labels</option>
+                @foreach(var l in Model.AvailableLabels)
+                {
+                    <option value="@l" selected="@(l == Model.SelectedLabel ? "selected" : null)">@l</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Source</span>
+            <select name="source" class="filter-select" style="min-width:140px;" onchange="this.form.submit()">
+                <option value="">All Sources</option>
+                @foreach(var s in Model.AvailableSources)
+                {
+                    <option value="@s" selected="@(s == Model.SelectedSource ? "selected" : null)">@s</option>
+                }
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Start Date</span>
+            <input type="date" class="filter-select" id="startDate" name="startDate" 
+                   max="@DateTime.UtcNow.ToString("yyyy-MM-dd")"
+                   value="@Model.DateRangeStart.ToString("yyyy-MM-dd")" 
+                   onchange="validateAndSubmit()" />
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">End Date</span>
+            <input type="date" class="filter-select" id="endDate" name="endDate" 
+                   max="@DateTime.UtcNow.ToString("yyyy-MM-dd")"
+                   value="@Model.DateRangeEnd.ToString("yyyy-MM-dd")" 
+                   onchange="validateAndSubmit()" />
+        </div>
+
+        <div class="filter-actions" style="margin-left: auto;">
+            <div class="search-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="articleSearch" placeholder="Search articles..." oninput="filterTable('articleSearch','articlesTable')" />
+            </div>
+                <button type="button" class="btn btn-ghost" onclick="exportData()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export
+                </button>
+        </div>
+    </div>
+</form>
+
+<!-- Articles Table -->
+<div class="panel">
+    <div class="panel-header">
+        <span class="panel-title">All Articles</span>
+        <span style="font-size:12px;color:var(--text-muted);">Showing @(((Model.Page - 1) * Model.PageSize) + 1)–@Math.Min(Model.Page * Model.PageSize, Model.TotalCount) of @Model.TotalCount</span>
+    </div>
+
+    <table class="data-table" id="articlesTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Title</th>
+                <th>Ticker</th>
+                <th>Source</th>
+                <th>Published At</th>
+                <th>Score</th>
+                <th>Label</th>
+                <th>Confidence</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in Model.Articles)
+            {
+                <tr>
+                    <td style="color:var(--text-muted);font-size:12px;">@a.Id</td>
+                    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@a.Title">@a.Title</td>
+                    <td><span style="font-weight:700;color:var(--accent-teal);font-family:monospace;font-size:12px;">@a.Ticker</span></td>
+                    <td style="color:var(--text-secondary);">@a.Source</td>
+                    <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">@a.PublishedAt</td>
+                    <td class="@ScoreClass(a.Score)">@a.Score.ToString("+0.00;-0.00;0.00")</td>
+                    <td><span class="score-badge @BadgeClass(a.Label)">@a.Label</span></td>
+                    <td style="color:var(--text-secondary);">@a.Confidence.ToString("0.00")</td>
+                </tr>
+            }
+            @if (!Model.Articles.Any())
+            {
+                <tr>
+                    <td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">No articles found for the selected filters.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <div class="table-footer">
+        <span class="table-footer-text">Showing @(((Model.Page - 1) * Model.PageSize) + 1)–@Math.Min(Model.Page * Model.PageSize, Model.TotalCount) of @Model.TotalCount articles</span>
+        <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" 
+                    onclick="changePage(@(Model.Page - 1))" @(Model.Page <= 1 ? "disabled" : "")>← Prev</button>
+            
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == 1 || i == Model.TotalPages || (i >= Model.Page - 2 && i <= Model.Page + 2))
+                {
+                    <button class="btn @(i == Model.Page ? "btn-primary" : "btn-ghost")" 
+                            style="padding:5px 12px;font-size:12px;" 
+                            onclick="changePage(@i)">@i</button>
+                }
+                else if (i == Model.Page - 3 || i == Model.Page + 3)
+                {
+                    <span style="color:var(--text-muted);padding-top:4px;">...</span>
+                }
+            }
+
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" 
+                    onclick="changePage(@(Model.Page + 1))" @(Model.Page >= Model.TotalPages ? "disabled" : "")>Next →</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function filterTable(inputId, tableId) {
+    const query = document.getElementById(inputId).value.toLowerCase();
+    document.querySelectorAll(`#${tableId} tbody tr`).forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+}
+
+function validateAndSubmit() {
+    const startInput = document.getElementById('startDate');
+    const endInput = document.getElementById('endDate');
+    if (startInput.value && endInput.value && startInput.value > endInput.value) {
+        alert('Start date cannot be after the end date.');
+        return;
+    }
+    document.getElementById('filterForm').submit();
+}
+
+function changePage(p) {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('page', p);
+    window.location.search = urlParams.toString();
+}
+
+function exportData() {
+    const form = document.getElementById('filterForm');
+    const formData = new FormData(form);
+    const params = new URLSearchParams();
+    for (const [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+    }
+    window.location.href = '/Articles/Export?' + params.toString();
+}
+</script>
+}
