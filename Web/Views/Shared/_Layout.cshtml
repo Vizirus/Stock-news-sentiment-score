@@ -16,6 +16,11 @@
 
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
+            <script>
+                if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                    document.getElementById('sidebar').classList.add('collapsed');
+                }
+            </script>
             <div class="sidebar-header">
                 <div class="sidebar-logo">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -95,6 +100,32 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sidebarToggle = document.getElementById("sidebarToggle");
+            const sidebarLogo = document.querySelector(".sidebar-logo");
+            const sidebar = document.getElementById("sidebar");
+
+            function toggleSidebar() {
+                if (sidebar) {
+                    sidebar.classList.toggle("collapsed");
+                    localStorage.setItem("sidebarCollapsed", sidebar.classList.contains("collapsed"));
+                }
+            }
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener("click", toggleSidebar);
+            }
+            
+            if (sidebarLogo) {
+                sidebarLogo.addEventListener("click", function () {
+                    if (sidebar && sidebar.classList.contains("collapsed")) {
+                        toggleSidebar();
+                    }
+                });
+            }
+        });
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

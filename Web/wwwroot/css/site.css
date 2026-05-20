@@ -82,7 +82,14 @@ a:hover { color: var(--accent-teal); }
 .sidebar.collapsed { width: 56px; }
 .sidebar.collapsed .sidebar-logo-text,
 .sidebar.collapsed .nav-item span { display: none; }
-.sidebar.collapsed .sidebar-logo { justify-content: center; }
+.sidebar.collapsed .sidebar-logo { justify-content: center; cursor: pointer; transition: var(--transition); }
+.sidebar.collapsed .sidebar-logo:hover svg { 
+    color: var(--text-bright); 
+    filter: drop-shadow(0 0 5px rgba(78,201,176,0.6)); 
+    transform: scale(1.1);
+}
+.sidebar.collapsed .sidebar-logo svg { transition: var(--transition); }
+.sidebar.collapsed .sidebar-toggle { display: none; }
 
 .sidebar-header {
     display: flex;
