@@ -16,3 +16,6 @@ appsettings.Development.json
 # NuGet
 **/packages/
 **/project.assets.json
+
+# Test projects
+Worker.Tests/
