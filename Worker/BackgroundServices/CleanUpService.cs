@@ -8,7 +8,7 @@ public class CleanUpService : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<CleanUpService> _logger;
     private DateTime? _lastWeeklyCleanup;
-    private DateTime? _lastHalfYearCleanup;
+    private DateTime? _lastYearCleanup;
 
     public CleanUpService(IServiceProvider serviceProvider, ILogger<CleanUpService> logger)
     {
@@ -32,12 +32,12 @@ public class CleanUpService : BackgroundService
                 _lastWeeklyCleanup = now;
             }
 
-            // Half-year cleanup: Jan 1st and July 1st at 03:00 UTC
-            if ((now.Month == 1 || now.Month == 7) && now.Day == 1 && now.Hour == 3 &&
-                (_lastHalfYearCleanup == null || _lastHalfYearCleanup.Value.Date != now.Date))
+            // Year cleanup: Jan 1st at 03:00 UTC
+            if (now.Month == 1 && now.Day == 1 && now.Hour == 3 &&
+                (_lastYearCleanup == null || _lastYearCleanup.Value.Date != now.Date))
             {
-                await PerformHalfYearCleanupAsync(stoppingToken);
-                _lastHalfYearCleanup = now;
+                await PerformYearCleanupAsync(stoppingToken);
+                _lastYearCleanup = now;
             }
 
             // Check every hour
@@ -86,9 +86,9 @@ public class CleanUpService : BackgroundService
         }
     }
 
-    private async Task PerformHalfYearCleanupAsync(CancellationToken stoppingToken)
+    private async Task PerformYearCleanupAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Starting Half-Year Cleanup...");
+        _logger.LogInformation("Starting Year Cleanup...");
         using var scope = _serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<IAppDBContext>();
 
@@ -110,7 +110,7 @@ public class CleanUpService : BackgroundService
             }
         }
 
-        var cutoffDate = DateTime.UtcNow.AddMonths(-6);
+        var cutoffDate = DateTime.UtcNow.AddMonths(-12);
         var summariesToDelete = await dbContext.TickerDailySummaries
             .Where(s => s.SummaryDate < cutoffDate && !summariesToKeep.Contains(s.Id))
             .ToListAsync(stoppingToken);
@@ -119,11 +119,11 @@ public class CleanUpService : BackgroundService
         {
             dbContext.TickerDailySummaries.RemoveRange(summariesToDelete);
             await dbContext.SaveChangesAsync(stoppingToken);
-            _logger.LogInformation($"Half-Year Cleanup deleted {summariesToDelete.Count} old summaries.");
+            _logger.LogInformation($"Year Cleanup deleted {summariesToDelete.Count} old summaries.");
         }
         else
         {
-            _logger.LogInformation("Half-Year Cleanup found no summaries to delete.");
+            _logger.LogInformation("Year Cleanup found no summaries to delete.");
         }
     }
 }
