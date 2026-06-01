@@ -1,5 +1,7 @@
 using Application.Interfaces;
+using Domain.Entities;
 using Infrastructure.DB;
+using Microsoft.AspNetCore.Identity;
 using Infrastructure.ExternalServices;
 using Infrastructure.Options;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +39,36 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IAppDBContext>(provider => provider.GetRequiredService<AppDbContext>());
+
+        // Identity Configuration
+        services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+        {
+            options.SignIn.RequireConfirmedAccount = false;
+            
+            // Password settings
+            options.Password.RequireDigit = true;
+            options.Password.RequireLowercase = true;
+            options.Password.RequireUppercase = true;
+            options.Password.RequireNonAlphanumeric = true;
+            options.Password.RequiredLength = 8;
+
+            // Lockout settings
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.AllowedForNewUsers = true;
+        })
+        .AddEntityFrameworkStores<AppDbContext>()
+        .AddDefaultTokenProviders();
+
+        services.ConfigureApplicationCookie(options =>
+        {
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+            options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Strict;
+            options.LoginPath = "/Account/Login";
+            options.AccessDeniedPath = "/Account/AccessDenied";
+            options.SlidingExpiration = true;
+        });
 
         // 2. Options Configuration
         services.Configure<NewsApiOptions>(configuration.GetSection("NewsApi"));

@@ -1,8 +1,71 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Welcome to SentimentIQ";
+    Layout = "_Layout";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+@section Styles {
+<style>
+.auth-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 560px;
+    padding: 0;
+}
+
+.auth-card .panel-header {
+    justify-content: center;
+    padding: 24px 32px 20px;
+}
+
+.auth-card-body {
+    padding: 0 32px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.home-tagline {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    text-align: center;
+    margin: 0;
+}
+
+.home-actions {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    padding-top: 8px;
+}
+
+.home-actions .btn {
+    min-width: 130px;
+    justify-content: center;
+}
+</style>
+}
+
+<div class="auth-page">
+    <div class="panel auth-card">
+        <div class="panel-header">
+            <span class="panel-title" style="font-size: 16px;">SentimentIQ</span>
+        </div>
+        <div class="auth-card-body">
+            <p class="home-tagline">
+                Harness the power of Artificial Intelligence to track, analyze, and
+                aggregate global financial sentiment in real-time. Make smarter decisions with data.
+            </p>
+            <div class="home-actions">
+                <a asp-controller="Account" asp-action="Login" class="btn btn-primary">Login</a>
+                <a asp-controller="Account" asp-action="Register" class="btn btn-secondary">Register</a>
+            </div>
+        </div>
+    </div>
 </div>

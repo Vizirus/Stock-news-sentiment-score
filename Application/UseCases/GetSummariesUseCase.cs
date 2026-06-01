@@ -25,12 +25,12 @@ public class GetSummariesUseCase
 
         if (!string.IsNullOrEmpty(tickerSymbol) && tickerSymbol != "All Tickers")
         {
-            query = query.Where(s => s.Ticker.Symbol == tickerSymbol);
+            query = query.Where(s => s.Ticker != null && s.Ticker.Symbol == tickerSymbol);
         }
 
         return await query
             .OrderByDescending(s => s.SummaryDate)
-            .ThenBy(s => s.Ticker.Symbol)
+            .ThenBy(s => s.Ticker != null ? s.Ticker.Symbol : string.Empty)
             .ToListAsync(cancellationToken);
     }
 }

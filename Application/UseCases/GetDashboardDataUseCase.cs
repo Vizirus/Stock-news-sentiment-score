@@ -95,8 +95,14 @@ public class GetDashboardDataUseCase
 
     private string GetSentimentLabel(decimal averageScore)
     {
+        if (averageScore >= 0.8m)
+            return "Very Positive";
+
         if (averageScore >= 0.2m)
             return "Positive";
+
+        if (averageScore <= -0.8m)
+            return "Very Negative";
 
         if (averageScore <= -0.2m)
             return "Negative";

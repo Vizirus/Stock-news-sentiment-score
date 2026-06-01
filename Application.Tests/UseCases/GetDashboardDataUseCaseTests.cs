@@ -15,13 +15,13 @@ public class GetDashboardDataUseCaseTests
         await db.SaveChangesAsync();
 
         var sut = new GetDashboardDataUseCase(db);
-        var result = await sut.ExecuteAsync();
+        var result = await sut.ExecuteAsync("TSLA", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow);
 
-        Assert.Single(result);
-        Assert.Equal("TSLA", result[0].StockLabel);
-        Assert.Equal(0m, result[0].AverageSentiment);
-        Assert.Equal("Neutral", result[0].SentimentLabel);
-        Assert.Equal(0, result[0].ArticlesForToday);
+        Assert.NotNull(result);
+        Assert.Equal("TSLA", result.StockLabel);
+        Assert.Equal(0m, result.AverageSentiment);
+        Assert.Equal("Neutral", result.SentimentLabel);
+        Assert.Equal(0, result.ArticlesForToday);
     }
 
     [Fact]
@@ -56,24 +56,23 @@ public class GetDashboardDataUseCaseTests
         await db.SaveChangesAsync();
 
         var sut = new GetDashboardDataUseCase(db);
-        var result = await sut.ExecuteAsync();
+        var result = await sut.ExecuteAsync("TSLA", now.AddDays(-1), now.AddDays(1));
 
-        Assert.Single(result);
-        Assert.Equal("Positive", result[0].SentimentLabel);
-        Assert.Single(result[0].RecentArticles);
-        Assert.Equal(1, result[0].PendingJobsCount);
-        Assert.Equal(1, result[0].PendingJobsCount);
-        Assert.Equal(1, result[0].FailedJobsCount);
+        Assert.NotNull(result);
+        Assert.Equal("Positive", result.SentimentLabel);
+        Assert.Single(result.RecentArticles);
+        Assert.Equal(1, result.PendingJobsCount);
+        Assert.Equal(1, result.FailedJobsCount);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenNoTickersInDb_ReturnsEmptyList()
+    public async Task ExecuteAsync_WhenNoTickersInDb_ReturnsNull()
     {
         await using var db = new TestAppDbContext();
         var sut = new GetDashboardDataUseCase(db);
-        var result = await sut.ExecuteAsync();
+        var result = await sut.ExecuteAsync("NONEXISTENT", DateTime.UtcNow, DateTime.UtcNow);
 
-        Assert.Empty(result);
+        Assert.Null(result);
     }
 
     [Fact]
@@ -87,6 +86,6 @@ public class GetDashboardDataUseCaseTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.ExecuteAsync(cts.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.ExecuteAsync("AAPL", DateTime.UtcNow, DateTime.UtcNow, cts.Token));
     }
 }
