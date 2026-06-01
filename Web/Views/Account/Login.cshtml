@@ -1,0 +1,143 @@
+@model Web.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Sign In";
+    Layout = "_Layout";
+}
+
+@section Styles {
+<style>
+.auth-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 480px;
+}
+
+.auth-card .panel-header {
+    justify-content: center;
+    padding: 24px 32px 20px;
+}
+
+.auth-card-body {
+    padding: 0 32px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.auth-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.auth-input {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 9px 14px;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 13.5px;
+    outline: none;
+    transition: var(--transition);
+    width: 100%;
+}
+
+.auth-input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(86, 156, 214, 0.2);
+}
+
+.auth-check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-check-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent-teal);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.auth-check-row label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    margin: 0;
+}
+
+.auth-footer {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    padding-top: 4px;
+}
+
+.auth-footer a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.auth-footer a:hover {
+    color: var(--accent-teal);
+}
+</style>
+}
+
+<div class="auth-page">
+    <div class="panel auth-card">
+        <div class="panel-header">
+            <span class="panel-title" style="font-size: 15px;">Sign in to SentimentIQ</span>
+        </div>
+
+        <div class="auth-card-body">
+            <form asp-controller="Account" asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" style="display: contents;">
+                <div asp-validation-summary="ModelOnly" class="text-danger" style="font-size: 12.5px;"></div>
+
+                <div class="auth-field">
+                    <label asp-for="Email" class="auth-label">Email</label>
+                    <input asp-for="Email" class="auth-input" autocomplete="username" aria-required="true" />
+                    <span asp-validation-for="Email" class="text-danger" style="font-size: 12px;"></span>
+                </div>
+
+                <div class="auth-field">
+                    <label asp-for="Password" class="auth-label">Password</label>
+                    <input asp-for="Password" class="auth-input" autocomplete="current-password" aria-required="true" />
+                    <span asp-validation-for="Password" class="text-danger" style="font-size: 12px;"></span>
+                </div>
+
+                <div class="auth-check-row">
+                    <input asp-for="RememberMe" type="checkbox" id="RememberMe" />
+                    <label for="RememberMe">Remember me</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: fit-content;">Login</button>
+
+                <div class="auth-footer">
+                    Don't have an account? <a asp-action="Register" asp-route-returnUrl="@ViewData["ReturnUrl"]">Register here</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

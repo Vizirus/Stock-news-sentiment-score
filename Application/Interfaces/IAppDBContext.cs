@@ -11,6 +11,7 @@ public interface IAppDBContext
     DbSet<ScoringJob> ScoringJobs { get; set; }
     DbSet<TickerDailySummary> TickerDailySummaries { get; set; }
     DbSet<SystemSettings> SystemSettings { get; set; }
+    DbSet<UserTicker> UserTickers { get; set; }
 
     Task<int> SaveChangesAsync(CancellationToken token = default);
 }

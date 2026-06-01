@@ -9,8 +9,11 @@ using System;
 using System.IO;
 using Domain.Entities;
 
+using Microsoft.AspNetCore.Authorization;
+
 namespace Web.Controllers;
 
+[Authorize(Roles = "Admin")]
 public class TickersController : Controller
 {
     private readonly GetTickersUseCase _getTickersUseCase;

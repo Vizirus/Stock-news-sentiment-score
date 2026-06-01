@@ -1,10 +1,11 @@
 using Application.Interfaces;
 using Domain.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.DB;
 
-public class AppDbContext : DbContext, IAppDBContext
+public class AppDbContext : IdentityDbContext<ApplicationUser>, IAppDBContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
@@ -16,6 +17,7 @@ public class AppDbContext : DbContext, IAppDBContext
     public DbSet<ScoringJob> ScoringJobs { get; set; }
     public DbSet<TickerDailySummary> TickerDailySummaries { get; set; }
     public DbSet<SystemSettings> SystemSettings { get; set; }
+    public DbSet<UserTicker> UserTickers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -172,6 +174,26 @@ public class AppDbContext : DbContext, IAppDBContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.Property(j => j.CompletdAt).HasColumnName("CompletedAt");
+        });
+
+        modelBuilder.Entity<UserTicker>(entity =>
+        {
+            entity.ToTable("UsersTickers");
+
+            entity.HasKey(ut => ut.Id);
+
+            entity.HasOne(ut => ut.User)
+                .WithMany(u => u.UserTickers)
+                .HasForeignKey(ut => ut.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ut => ut.Ticker)
+                .WithMany(t => t.UserTickers)
+                .HasForeignKey(ut => ut.TickerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(ut => new { ut.UserId, ut.TickerId })
+                .IsUnique();
         });
     }
     public override async Task<int> SaveChangesAsync(CancellationToken token = default)
