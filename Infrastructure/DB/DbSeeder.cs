@@ -3,6 +3,7 @@ using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Identity;
 
 namespace Infrastructure.DB;
 
@@ -28,6 +29,41 @@ public static class DbSeeder
         }
 
         logger.LogInformation("Seeding SQLite development database...");
+
+        // --- Identity ---
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var configuration = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+
+        string[] roles = { "Admin", "User" };
+        foreach (var role in roles)
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                await roleManager.CreateAsync(new IdentityRole(role));
+            }
+        }
+
+        var adminEmail = "My_Admin";
+        var adminUser = await userManager.FindByNameAsync(adminEmail);
+        if (adminUser == null)
+        {
+            adminUser = new ApplicationUser
+            {
+                UserName = adminEmail,
+                Email = adminEmail + "@local.com",
+                Name = "System",
+                Surname = "Admin",
+                EmailConfirmed = true
+            };
+
+            var adminPassword = configuration["AdminPassword"] ?? "BaBeLo$12";
+            var result = await userManager.CreateAsync(adminUser, adminPassword);
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+            }
+        }
 
         // --- Tickers ---
         var tickers = new List<Ticker>

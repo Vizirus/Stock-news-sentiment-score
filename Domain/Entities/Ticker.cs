@@ -11,4 +11,6 @@ public class Ticker
     public ICollection<ArticleScore> ArticleScores { get; set; } = [];
     public ICollection<ScoringJob> ScoringJobs { get; set; } = [];
     public ICollection<TickerDailySummary> DailySummaries { get; set; } = [];
+    
+    public ICollection<UserTicker> UserTickers { get; set; } = new List<UserTicker>();
 }

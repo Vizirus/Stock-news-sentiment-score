@@ -15,6 +15,12 @@
         "very negative" => "very-negative",
         _               => "neutral"
     };
+
+    (string Arrow, string ColorVar) GetTrendArrowAndColor(string trendDirection) => trendDirection.ToLower() switch {
+        "upward"   => ("↗", "var(--positive-color)"),
+        "downward" => ("↘", "var(--negative-color)"),
+        _          => ("→", "var(--accent-teal)")
+    };
 }
 
 <!-- Page Header -->
@@ -85,7 +91,10 @@
     </div>
     <div class="kpi-card">
         <div class="kpi-label">Trend Direction</div>
-        <div class="kpi-trend-icon">↗</div>
+        @{
+            var trend = GetTrendArrowAndColor(Model.TrendDirection);
+        }
+        <div class="kpi-trend-icon" style="color: @trend.ColorVar;">@trend.Arrow</div>
         <div class="kpi-sub">@Model.TrendDirection</div>
     </div>
     <div class="kpi-card">
