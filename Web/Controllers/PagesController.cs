@@ -365,6 +365,7 @@ public class SummariesController : Controller
     }
 }
 
+[Authorize]
 public class SettingsController : Controller
 {
     private readonly IRuntimeSettingsService _runtimeSettingsService;
@@ -377,14 +378,35 @@ public class SettingsController : Controller
     }
 
     [HttpGet]
-    public IActionResult Index(bool success = false)
+    public async Task<IActionResult> Index(bool success = false)
     {
-        var settings = _runtimeSettingsService.GetSettings();
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Challenge();
+        }
+
+        var dbSettings = await _dbContext.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId);
+        if (dbSettings == null)
+        {
+            // Graceful lazy-initialization fallback trigger
+            dbSettings = new UserSettings
+            {
+                UserId = userId,
+                DailyLlmCallLimit = 100,
+                BatchSize = 20,
+                FetchIntervalHours = 6,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _dbContext.UserSettings.Add(dbSettings);
+            await _dbContext.SaveChangesAsync();
+        }
+
         var viewModel = new SettingsViewModel
         {
-            DailyLlmCallLimit = settings.DailyLlmCallLimit,
-            BatchSize = settings.BatchSize,
-            FetchIntervalHours = settings.FetchIntervalHours,
+            DailyLlmCallLimit = dbSettings.DailyLlmCallLimit,
+            BatchSize = dbSettings.BatchSize,
+            FetchIntervalHours = dbSettings.FetchIntervalHours,
             Success = success
         };
 
@@ -392,6 +414,7 @@ public class SettingsController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateSettings(SettingsViewModel model, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
@@ -399,20 +422,40 @@ public class SettingsController : Controller
             return View("Index", model);
         }
 
-        var dbSettings = await _dbContext.SystemSettings.FirstOrDefaultAsync(cancellationToken);
-        if (dbSettings == null)
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
         {
-            dbSettings = new SystemSettings();
-            _dbContext.SystemSettings.Add(dbSettings);
+            return Challenge();
         }
 
-        dbSettings.DailyLlmCallLimit = model.DailyLlmCallLimit;
-        dbSettings.BatchSize = model.BatchSize;
-        dbSettings.FetchIntervalHours = model.FetchIntervalHours;
-        dbSettings.UpdatedAt = DateTime.UtcNow;
+        var dbSettings = await _dbContext.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId, cancellationToken);
+        if (dbSettings == null)
+        {
+            dbSettings = new UserSettings 
+            { 
+                UserId = userId,
+                DailyLlmCallLimit = model.DailyLlmCallLimit,
+                BatchSize = model.BatchSize,
+                FetchIntervalHours = model.FetchIntervalHours,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _dbContext.UserSettings.Add(dbSettings);
+        }
+        else
+        {
+            dbSettings.DailyLlmCallLimit = model.DailyLlmCallLimit;
+            dbSettings.BatchSize = model.BatchSize;
+            dbSettings.FetchIntervalHours = model.FetchIntervalHours;
+            dbSettings.UpdatedAt = DateTime.UtcNow;
+        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        await _runtimeSettingsService.ReloadAsync(cancellationToken);
+
+        // Reload cached background settings only if the administrator modifies their settings
+        if (User.IsInRole("Admin"))
+        {
+            await _runtimeSettingsService.ReloadAsync(cancellationToken);
+        }
 
         return RedirectToAction("Index", new { success = true });
     }

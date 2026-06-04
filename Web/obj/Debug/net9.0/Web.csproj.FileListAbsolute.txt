@@ -266,3 +266,7 @@ D:\Artem\Файли\Унік\4th semester\Eservices\Final project\Source code\Do
 D:\Artem\Файли\Унік\4th semester\Eservices\Final project\Source code\Domain\Web\obj\Debug\net9.0\compressed\f61f1xnw7n-8rfg2vfavp.gz
 D:\Artem\Файли\Унік\4th semester\Eservices\Final project\Source code\Domain\Web\obj\Debug\net9.0\compressed\2wck7lvexw-tl6pf1vxj3.gz
 D:\Artem\Файли\Унік\4th semester\Eservices\Final project\Source code\Domain\Web\bin\Debug\net9.0\Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
+D:\Artem\Файли\Унік\4th semester\Eservices\Final project\Source code\Domain\Web\bin\Debug\net9.0\System.Security.Cryptography.Pkcs.dll
+D:\Artem\Файли\Унік\4th semester\Eservices\Final project\Source code\Domain\Web\bin\Debug\net9.0\System.Security.Cryptography.Xml.dll
+D:\Artem\Файли\Унік\4th semester\Eservices\Final project\Source code\Domain\Web\bin\Debug\net9.0\runtimes\win\lib\net9.0\System.Security.Cryptography.Pkcs.dll
+D:\Artem\Файли\Унік\4th semester\Eservices\Final project\Source code\Domain\Web\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt

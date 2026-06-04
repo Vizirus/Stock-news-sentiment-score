@@ -1,6 +1,7 @@
 using Application.DTOs;
 using Application.Interfaces;
 using Application.Options;
+using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -32,8 +33,14 @@ public class RuntimeSettingsService : IRuntimeSettingsService
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<IAppDBContext>();
+            var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<ApplicationUser>>();
             
-            var dbSettings = await dbContext.SystemSettings.FirstOrDefaultAsync(token);
+            var adminUser = await userManager.FindByEmailAsync("My_Admin@local.com");
+            UserSettings? dbSettings = null;
+            if (adminUser != null)
+            {
+                dbSettings = await dbContext.UserSettings.FirstOrDefaultAsync(s => s.UserId == adminUser.Id, token);
+            }
             
             if (dbSettings != null)
             {

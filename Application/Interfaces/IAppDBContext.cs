@@ -10,7 +10,7 @@ public interface IAppDBContext
     DbSet<Article> Article { get; set; }
     DbSet<ScoringJob> ScoringJobs { get; set; }
     DbSet<TickerDailySummary> TickerDailySummaries { get; set; }
-    DbSet<SystemSettings> SystemSettings { get; set; }
+    DbSet<UserSettings> UserSettings { get; set; }
     DbSet<UserTicker> UserTickers { get; set; }
 
     Task<int> SaveChangesAsync(CancellationToken token = default);

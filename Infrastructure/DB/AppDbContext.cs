@@ -16,16 +16,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>, IAppDBContext
     public DbSet<Article> Article { get; set; } = null!;
     public DbSet<ScoringJob> ScoringJobs { get; set; }
     public DbSet<TickerDailySummary> TickerDailySummaries { get; set; }
-    public DbSet<SystemSettings> SystemSettings { get; set; }
+    public DbSet<UserSettings> UserSettings { get; set; }
     public DbSet<UserTicker> UserTickers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<SystemSettings>(entity =>
+        modelBuilder.Entity<UserSettings>(entity =>
         {
-            entity.ToTable("SystemSettings");
+            entity.ToTable("UserSettings");
+
+            entity.HasKey(s => s.Id);
 
             entity.Property(s => s.DailyLlmCallLimit)
                 .IsRequired();
@@ -38,6 +40,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>, IAppDBContext
 
             entity.Property(s => s.UpdatedAt)
                 .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.HasOne(s => s.User)
+                .WithOne(u => u.UserSettings)
+                .HasForeignKey<UserSettings>(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(s => s.UserId)
+                .IsUnique();
         });
 
         modelBuilder.Entity<Ticker>(entity =>

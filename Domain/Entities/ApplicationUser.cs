@@ -8,4 +8,5 @@ public class ApplicationUser : IdentityUser
     public string Surname { get; set; } = string.Empty;
     
     public ICollection<UserTicker> UserTickers { get; set; } = new List<UserTicker>();
+    public UserSettings UserSettings { get; set; } = null!;
 }

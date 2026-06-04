@@ -65,7 +65,7 @@ public static class DbSeeder
                 Surname = "Admin",
                 EmailConfirmed = true
             };
- 
+
             var adminPassword = configuration["AdminPassword"] ?? "BaBeLo$12";
             var result = await userManager.CreateAsync(adminUser, adminPassword);
             if (result.Succeeded)
@@ -76,6 +76,24 @@ public static class DbSeeder
             else
             {
                 logger.LogError("Failed to seed admin user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+        }
+
+        if (adminUser != null)
+        {
+            var adminSettings = await db.UserSettings.FirstOrDefaultAsync(s => s.UserId == adminUser.Id);
+            if (adminSettings == null)
+            {
+                db.UserSettings.Add(new UserSettings
+                {
+                    UserId = adminUser.Id,
+                    DailyLlmCallLimit = 100,
+                    BatchSize = 20,
+                    FetchIntervalHours = 6,
+                    UpdatedAt = DateTime.UtcNow
+                });
+                await db.SaveChangesAsync();
+                logger.LogInformation("Admin default user settings seeded successfully.");
             }
         }
  
@@ -95,17 +113,6 @@ public static class DbSeeder
             logger.LogInformation("Tickers seeded successfully.");
         }
 
-        // --- System Settings ---
-        if (!db.SystemSettings.Any())
-        {
-            db.SystemSettings.Add(new SystemSettings
-            {
-                DailyLlmCallLimit = 100,
-                BatchSize = 20,
-                FetchIntervalHours = 6,
-                UpdatedAt = DateTime.UtcNow
-            });
-        }
 
         // --- Articles ---
         if (!await db.Article.AnyAsync())

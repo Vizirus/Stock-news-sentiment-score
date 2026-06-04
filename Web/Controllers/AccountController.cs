@@ -11,11 +11,16 @@ public class AccountController : Controller
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly Infrastructure.DB.AppDbContext _dbContext;
 
-    public AccountController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager)
+    public AccountController(
+        SignInManager<ApplicationUser> signInManager, 
+        UserManager<ApplicationUser> userManager,
+        Infrastructure.DB.AppDbContext dbContext)
     {
         _signInManager = signInManager;
         _userManager = userManager;
+        _dbContext = dbContext;
     }
 
     [HttpGet]
@@ -92,6 +97,17 @@ public class AccountController : Controller
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, "User");
+                
+                // Secure C# Registration Trigger: Automatically provision default settings linked to UserId
+                _dbContext.UserSettings.Add(new UserSettings
+                {
+                    UserId = user.Id,
+                    DailyLlmCallLimit = 100,
+                    BatchSize = 20,
+                    FetchIntervalHours = 6,
+                    UpdatedAt = DateTime.UtcNow
+                });
+                await _dbContext.SaveChangesAsync();
                 
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 return RedirectToLocal(returnUrl);

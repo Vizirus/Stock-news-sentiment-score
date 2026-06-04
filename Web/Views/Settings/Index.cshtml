@@ -26,7 +26,8 @@
             <span class="panel-title">Processing Limits</span>
         </div>
 
-        <form method="post" action="/Settings/UpdateSettings" style="margin: 0; display: flex; flex-direction: column; gap: 20px;">
+        <form asp-controller="Settings" asp-action="UpdateSettings" method="post" style="margin: 0; display: flex; flex-direction: column; gap: 20px;">
+            @Html.AntiForgeryToken()
 
             <div class="settings-field">
                 <label class="settings-label" for="dailyLimitInput">Daily LLM Call Limit</label>

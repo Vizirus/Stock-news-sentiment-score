@@ -5539,11 +5539,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Artem\\Файли\\Унік\\4th semester\\Eservices\\Final project\\Source code\\Domain\\Infrastructure\\Infrastructure.csproj",
+      "projectUniqueName": "d:\\Artem\\Файли\\Унік\\4th semester\\Eservices\\Final project\\Source code\\Domain\\Infrastructure\\Infrastructure.csproj",
       "projectName": "Infrastructure",
-      "projectPath": "D:\\Artem\\Файли\\Унік\\4th semester\\Eservices\\Final project\\Source code\\Domain\\Infrastructure\\Infrastructure.csproj",
+      "projectPath": "d:\\Artem\\Файли\\Унік\\4th semester\\Eservices\\Final project\\Source code\\Domain\\Infrastructure\\Infrastructure.csproj",
       "packagesPath": "C:\\Users\\user\\.nuget\\packages\\",
-      "outputPath": "D:\\Artem\\Файли\\Унік\\4th semester\\Eservices\\Final project\\Source code\\Domain\\Infrastructure\\obj\\",
+      "outputPath": "d:\\Artem\\Файли\\Унік\\4th semester\\Eservices\\Final project\\Source code\\Domain\\Infrastructure\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "D:\\INSTALL\\Visual studio\\SDK\\NuGetPackages"
