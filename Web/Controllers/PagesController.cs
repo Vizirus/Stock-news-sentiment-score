@@ -407,6 +407,7 @@ public class SettingsController : Controller
             DailyLlmCallLimit = dbSettings.DailyLlmCallLimit,
             BatchSize = dbSettings.BatchSize,
             FetchIntervalHours = dbSettings.FetchIntervalHours,
+            ActiveTickerCount = await _dbContext.Ticker.CountAsync(),
             Success = success
         };
 
@@ -419,6 +420,16 @@ public class SettingsController : Controller
     {
         if (!ModelState.IsValid)
         {
+            model.ActiveTickerCount = await _dbContext.Ticker.CountAsync(cancellationToken);
+            return View("Index", model);
+        }
+
+        var tickerCount = await _dbContext.Ticker.CountAsync(cancellationToken);
+        var estimatedRequests = Math.Ceiling((double)model.DailyLlmCallLimit / model.BatchSize) * tickerCount;
+        if (estimatedRequests > 1000)
+        {
+            ModelState.AddModelError("", $"These settings would generate ~{estimatedRequests:0} LLM requests/day, exceeding the 1,000 request limit.");
+            model.ActiveTickerCount = tickerCount;
             return View("Index", model);
         }
 

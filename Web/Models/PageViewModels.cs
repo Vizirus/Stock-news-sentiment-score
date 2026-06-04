@@ -118,5 +118,6 @@ public class SettingsViewModel
     public int DailyLlmCallLimit { get; set; }
     public int BatchSize { get; set; }
     public int FetchIntervalHours { get; set; }
+    public int ActiveTickerCount { get; set; }
     public bool Success { get; set; }
 }
