@@ -60,7 +60,7 @@ public class SentimentLlmService : ISentimentLLM
             }
         };
 
-        var url = $"{_options.BaseUrl}?key={_options.ApiKey}";
+        var url = _options.BaseUrl;
 
         _logger.LogInformation(
             "Sending batch of {Count} articles to Gemini for ticker {Ticker}",
