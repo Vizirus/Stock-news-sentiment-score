@@ -78,9 +78,16 @@ public static class DependencyInjection
         services.AddHttpClient<INewsAPI, FinnhubNewsApiService>((provider, client) =>
         {
             var options = configuration.GetSection("NewsApi").Get<NewsApiOptions>();
-            if (options != null && !string.IsNullOrEmpty(options.BaseUrl))
+            if (options != null)
             {
-                client.BaseAddress = new Uri(options.BaseUrl);
+                if (!string.IsNullOrEmpty(options.BaseUrl))
+                {
+                    client.BaseAddress = new Uri(options.BaseUrl);
+                }
+                if (!string.IsNullOrEmpty(options.ApiKey))
+                {
+                    client.DefaultRequestHeaders.Add("X-Finnhub-Token", options.ApiKey);
+                }
             }
         });
 

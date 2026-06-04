@@ -23,7 +23,7 @@ public class FinnhubNewsApiService : INewsAPI
         var from = fromDate.ToString("yyyy-MM-dd");
         var to = toDate.ToString("yyyy-MM-dd");
 
-        var url = $"company-news?symbol={ticker}&from={from}&to={to}&token={_options.ApiKey}";
+        var url = $"company-news?symbol={ticker}&from={from}&to={to}";
 
         var response = await _httpClient.GetAsync(url, token);
 

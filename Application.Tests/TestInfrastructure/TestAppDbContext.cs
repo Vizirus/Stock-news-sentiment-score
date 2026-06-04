@@ -14,7 +14,7 @@ public sealed class TestAppDbContext : DbContext, IAppDBContext
     public DbSet<Article> Article { get; set; } = null!;
     public DbSet<ScoringJob> ScoringJobs { get; set; } = null!;
     public DbSet<TickerDailySummary> TickerDailySummaries { get; set; } = null!;
-    public DbSet<UserSettings> UserSettings { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+    public DbSet<UserSettings> UserSettings { get; set ; }
     public DbSet<UserTicker> UserTickers { get; set; } = null!;
 
     public TestAppDbContext()

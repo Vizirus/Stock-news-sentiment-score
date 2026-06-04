@@ -12,6 +12,11 @@
 .env
 appsettings.json
 appsettings.Development.json
+appsettings.Production.json
+
+# Databases
+*.db
+sentiment_q.db
 
 # NuGet
 **/packages/
@@ -19,3 +24,4 @@ appsettings.Development.json
 
 # Test projects
 Worker.Tests/
+Application.Tests/
