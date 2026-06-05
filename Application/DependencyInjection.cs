@@ -16,7 +16,6 @@ public static class DependencyInjection
         services.AddScoped<GetScoringJobsUseCase>();
         services.AddScoped<RetryAllFailedJobsUseCase>();
         services.AddScoped<GetSummariesUseCase>();
-        services.AddSingleton<IRuntimeSettingsService, RuntimeSettingsService>();
         services.AddScoped<ProcessScoringUseCase>();
         services.AddScoped<FetchArticlesUseCase>();
         services.AddScoped<CreateDailyAggregationUseCase>();

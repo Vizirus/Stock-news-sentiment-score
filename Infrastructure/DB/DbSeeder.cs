@@ -79,22 +79,18 @@ public static class DbSeeder
             }
         }
 
-        if (adminUser != null)
+        var systemSettings = await db.SystemSettings.FirstOrDefaultAsync();
+        if (systemSettings == null)
         {
-            var adminSettings = await db.UserSettings.FirstOrDefaultAsync(s => s.UserId == adminUser.Id);
-            if (adminSettings == null)
+            db.SystemSettings.Add(new SystemSettings
             {
-                db.UserSettings.Add(new UserSettings
-                {
-                    UserId = adminUser.Id,
-                    DailyLlmCallLimit = 100,
-                    BatchSize = 20,
-                    FetchIntervalHours = 6,
-                    UpdatedAt = DateTime.UtcNow
-                });
-                await db.SaveChangesAsync();
-                logger.LogInformation("Admin default user settings seeded successfully.");
-            }
+                DailyLlmCallLimit = 100,
+                BatchSize = 20,
+                FetchIntervalHours = 6,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+            logger.LogInformation("System settings seeded successfully.");
         }
  
         // --- Tickers ---

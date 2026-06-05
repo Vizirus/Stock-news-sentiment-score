@@ -31,13 +31,6 @@ if (app.Environment.IsDevelopment())
     await DbSeeder.SeedAsync(app.Services);
 }
 
-// Initialize Runtime Settings Cache
-using (var scope = app.Services.CreateScope())
-{
-    var settingsService = scope.ServiceProvider.GetRequiredService<Application.Interfaces.IRuntimeSettingsService>();
-    await settingsService.ReloadAsync();
-}
-
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

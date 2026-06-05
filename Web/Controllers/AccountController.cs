@@ -98,17 +98,6 @@ public class AccountController : Controller
             {
                 await _userManager.AddToRoleAsync(user, "User");
                 
-                // Secure C# Registration Trigger: Automatically provision default settings linked to UserId
-                _dbContext.UserSettings.Add(new UserSettings
-                {
-                    UserId = user.Id,
-                    DailyLlmCallLimit = 100,
-                    BatchSize = 20,
-                    FetchIntervalHours = 6,
-                    UpdatedAt = DateTime.UtcNow
-                });
-                await _dbContext.SaveChangesAsync();
-                
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 return RedirectToLocal(returnUrl);
             }
