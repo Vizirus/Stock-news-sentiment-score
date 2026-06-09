@@ -39,21 +39,7 @@
         </select>
     </div>
 
-    <div class="filter-group">
-        <span class="filter-label">Start Date</span>
-        <input type="date" class="filter-select" id="startDate" name="startDate" 
-               max="@DateTime.UtcNow.ToString("yyyy-MM-dd")"
-               value="@Model.DateRangeStart.ToString("yyyy-MM-dd")" 
-               onchange="validateAndSubmit()" />
-    </div>
 
-    <div class="filter-group">
-        <span class="filter-label">End Date</span>
-        <input type="date" class="filter-select" id="endDate" name="endDate" 
-               max="@DateTime.UtcNow.ToString("yyyy-MM-dd")"
-               value="@Model.DateRangeEnd.ToString("yyyy-MM-dd")" 
-               onchange="validateAndSubmit()" />
-    </div>
 
     <div class="filter-actions">
         <button type="submit" class="btn btn-ghost" id="refreshBtn">
@@ -109,7 +95,7 @@
     <!-- Line Chart: Sentiment Trend -->
     <div class="panel">
         <div class="panel-header">
-            <span class="panel-title">Sentiment Trend Over Time</span>
+            <span class="panel-title">24-Hour Sentiment Pulse</span>
         </div>
         <div class="chart-container" style="height: 220px;">
             <canvas id="sentimentTrendChart"></canvas>
@@ -161,8 +147,8 @@
         <div class="panel-header">
             <span class="panel-title">Recent Articles</span>
             <div style="display:flex;gap:8px;">
-                <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("Index", "Articles", new { ticker = Model.SelectedTicker, startDate = Model.DateRangeStart.ToString("yyyy-MM-dd"), endDate = Model.DateRangeEnd.ToString("yyyy-MM-dd") })'">View Details</button>
-                <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("ExportRecentArticles", "Dashboard", new { ticker = Model.SelectedTicker, startDate = Model.DateRangeStart.ToString("yyyy-MM-dd"), endDate = Model.DateRangeEnd.ToString("yyyy-MM-dd") })'">
+                <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("Index", "Articles", new { ticker = Model.SelectedTicker })'">View Details</button>
+                <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("ExportRecentArticles", "Dashboard", new { ticker = Model.SelectedTicker })'">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>
@@ -198,7 +184,7 @@
         </table>
         <div class="table-footer">
             <span class="table-footer-text">Showing 1 to @Model.RecentArticles.Count of @Model.TotalArticles</span>
-            <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("Index", "Articles", new { ticker = Model.SelectedTicker, startDate = Model.DateRangeStart.ToString("yyyy-MM-dd"), endDate = Model.DateRangeEnd.ToString("yyyy-MM-dd") })'">View Details</button>
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("Index", "Articles", new { ticker = Model.SelectedTicker })'">View Details</button>
         </div>
     </div>
 
@@ -206,7 +192,7 @@
     <div class="panel">
         <div class="panel-header">
             <span class="panel-title">Ticker Daily Summaries</span>
-            <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("ExportDailySummaries", "Dashboard", new { ticker = Model.SelectedTicker, startDate = Model.DateRangeStart.ToString("yyyy-MM-dd"), endDate = Model.DateRangeEnd.ToString("yyyy-MM-dd") })'">
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="window.location.href='@Url.Action("ExportDailySummaries", "Dashboard", new { ticker = Model.SelectedTicker })'">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>
@@ -301,6 +287,7 @@
                 pointHoverRadius: 7,
                 tension: 0.35,
                 fill: true,
+                spanGaps: true,
             }]
         },
         options: {
@@ -373,16 +360,6 @@
 
     // ---- Date Validation ----
     function validateAndSubmit() {
-        const startInput = document.getElementById('startDate');
-        const endInput = document.getElementById('endDate');
-        const start = startInput.value;
-        const end = endInput.value;
-        
-        if (start && end && start > end) {
-            alert('Start date cannot be after the end date.');
-            return;
-        }
-        
         document.getElementById('filterForm').submit();
     }
 </script>

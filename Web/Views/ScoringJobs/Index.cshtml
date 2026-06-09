@@ -7,6 +7,7 @@
         "positive"      => "positive",
         "negative"      => "negative",
         "very negative" => "very-negative",
+        "irrelevant"    => "neutral",
         _               => "neutral"
     } ?? "neutral";
 
@@ -50,30 +51,73 @@
     </div>
 </div>
 
-<!-- Actions -->
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-    <div style="display:flex;gap:10px;">
-        <button class="btn btn-ghost" id="filterAll" onclick="filterJobs('all')" style="font-size:12px;">All</button>
-        <button class="btn btn-ghost" id="filterPending" onclick="filterJobs('pending')" style="font-size:12px;color:var(--accent-yellow);border-color:var(--accent-yellow);">Pending (@Model.TotalPending)</button>
-        <button class="btn btn-ghost" id="filterFailed" onclick="filterJobs('failed')" style="font-size:12px;color:var(--accent-red);border-color:var(--accent-red);">Failed (@Model.TotalFailed)</button>
-        <button class="btn btn-ghost" id="filterCompleted" onclick="filterJobs('completed')" style="font-size:12px;color:var(--positive-color);border-color:var(--positive-color);">Completed</button>
+<!-- Filter Bar -->
+<form id="filterForm" method="get" action="/ScoringJobs">
+    <div class="filter-bar" style="margin-bottom:18px; flex-wrap: wrap; gap: 12px;">
+        <div class="filter-group">
+            <span class="filter-label">Status</span>
+            <select name="status" class="filter-select" style="min-width:140px;" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                @foreach(var s in Model.AvailableStatuses)
+                {
+                    <option value="@s" selected="@(s == Model.SelectedStatus ? "selected" : null)">@s</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Ticker</span>
+            <select name="ticker" class="filter-select" style="min-width:140px;" onchange="this.form.submit()">
+                <option value="">All Tickers</option>
+                @foreach(var t in Model.AvailableTickers)
+                {
+                    <option value="@t" selected="@(t == Model.SelectedTicker ? "selected" : null)">@t</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Label</span>
+            <select name="label" class="filter-select" style="min-width:140px;" onchange="this.form.submit()">
+                <option value="">All Labels</option>
+                @foreach(var l in Model.AvailableLabels)
+                {
+                    <option value="@l" selected="@(l == Model.SelectedLabel ? "selected" : null)">@l</option>
+                }
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Start Date</span>
+            <input type="date" class="filter-select" id="startDate" name="startDate" 
+                   max="@DateTime.UtcNow.ToString("yyyy-MM-dd")"
+                   value="@Model.DateRangeStart.ToString("yyyy-MM-dd")" 
+                   onchange="validateAndSubmit()" />
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">End Date</span>
+            <input type="date" class="filter-select" id="endDate" name="endDate" 
+                   max="@DateTime.UtcNow.ToString("yyyy-MM-dd")"
+                   value="@Model.DateRangeEnd.ToString("yyyy-MM-dd")" 
+                   onchange="validateAndSubmit()" />
+        </div>
+
+        <div class="filter-actions" style="margin-left: auto;">
+            <button type="submit" formmethod="post" formaction="/ScoringJobs/RetryAll" class="btn btn-secondary" style="gap:7px;" @(Model.TotalFailed > 0 ? "" : "disabled")>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                Retry All Failed
+            </button>
+        </div>
     </div>
-    <form method="post" action="/ScoringJobs/RetryAll" style="margin:0;">
-        <button type="submit" class="btn btn-secondary" style="gap:7px;" @(Model.TotalFailed > 0 ? "" : "disabled")>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-            Retry All Failed
-        </button>
-    </form>
-</div>
+</form>
 
 <!-- Jobs Table -->
 <div class="panel">
     <div class="panel-header">
         <span class="panel-title">Job Queue</span>
-        <span style="font-size:12px;color:var(--text-muted);">@Model.Jobs.Count entries shown</span>
+        <span style="font-size:12px;color:var(--text-muted);">Showing @(Model.TotalCount == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1)–@Math.Min(Model.Page * Model.PageSize, Model.TotalCount) of @Model.TotalCount</span>
     </div>
 
     <table class="data-table" id="jobsTable">
@@ -125,20 +169,58 @@
                     </td>
                 </tr>
             }
+            @if (!Model.Jobs.Any())
+            {
+                <tr>
+                    <td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);">No jobs found for the selected filters.</td>
+                </tr>
+            }
         </tbody>
     </table>
 
+    <!-- Pagination -->
     <div class="table-footer">
-        <span class="table-footer-text">Showing @Model.Jobs.Count entries</span>
+        <span class="table-footer-text">Showing @(Model.TotalCount == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1)–@Math.Min(Model.Page * Model.PageSize, Model.TotalCount) of @Model.TotalCount jobs</span>
+        <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" 
+                    onclick="changePage(@(Model.Page - 1))" @(Model.Page <= 1 ? "disabled" : "")>← Prev</button>
+            
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == 1 || i == Model.TotalPages || (i >= Model.Page - 2 && i <= Model.Page + 2))
+                {
+                    <button class="btn @(i == Model.Page ? "btn-primary" : "btn-ghost")" 
+                            style="padding:5px 12px;font-size:12px;" 
+                            onclick="changePage(@i)">@i</button>
+                }
+                else if (i == Model.Page - 3 || i == Model.Page + 3)
+                {
+                    <span style="color:var(--text-muted);padding-top:4px;">...</span>
+                }
+            }
+
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" 
+                    onclick="changePage(@(Model.Page + 1))" @(Model.Page >= Model.TotalPages ? "disabled" : "")>Next →</button>
+        </div>
     </div>
 </div>
 
 @section Scripts {
 <script>
-function filterJobs(status) {
-    document.querySelectorAll('#jobsTable tbody tr').forEach(row => {
-        row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
-    });
+function validateAndSubmit() {
+    const startInput = document.getElementById('startDate');
+    const endInput = document.getElementById('endDate');
+    if (startInput.value > endInput.value) {
+        alert('Start date cannot be after the end date.');
+        return;
+    }
+    document.getElementById('filterForm').submit();
+}
+
+function changePage(p) {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('page', p);
+    window.location.search = urlParams.toString();
 }
 </script>
 }

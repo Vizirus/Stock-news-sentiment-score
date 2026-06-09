@@ -21,7 +21,7 @@ public class DashboardViewModel
 
     // --- Sentiment Trend (for Chart.js line chart) ---
     public List<string> TrendLabels { get; set; } = new();
-    public List<decimal> TrendScores { get; set; } = new();
+    public List<decimal?> TrendScores { get; set; } = new();
 
     // --- Sentiment Distribution (for Chart.js pie chart) ---
     public int PositivePercent { get; set; }

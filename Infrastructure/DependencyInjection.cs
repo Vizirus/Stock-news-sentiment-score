@@ -91,15 +91,11 @@ public static class DependencyInjection
             }
         });
 
-        // 4. LLM Service with HttpClient
-        services.AddHttpClient<ISentimentLLM, SentimentLlmService>((provider, client) =>
-        {
-            var options = configuration.GetSection("SentimentLlm").Get<SentimentLlmOptions>();
-            if (options != null && !string.IsNullOrEmpty(options.ApiKey))
-            {
-                client.DefaultRequestHeaders.Add("x-goog-api-key", options.ApiKey);
-            }
-        });
+        // 4. LLM Service (OpenAI SDK handles HTTP internally)
+        services.AddScoped<ISentimentLLM, SentimentLlmService>();
+
+        // 5. Job Trigger Service
+        services.AddSingleton<IJobTriggerService, Infrastructure.Services.QueueJobTriggerService>();
 
         return services;
     }

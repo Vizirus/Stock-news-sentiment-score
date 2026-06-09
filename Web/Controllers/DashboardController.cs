@@ -23,7 +23,7 @@ public class DashboardController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? ticker, DateTime? startDate, DateTime? endDate)
+    public async Task<IActionResult> Index(string? ticker)
     {
         var tickers = await _dbContext.Ticker
             .AsNoTracking()
@@ -34,8 +34,15 @@ public class DashboardController : Controller
             ? (tickers.FirstOrDefault() ?? "AAPL") 
             : ticker;
 
-        var end = endDate ?? DateTime.UtcNow.Date;
-        var start = startDate ?? end.AddDays(-7);
+        // Fetch the most recent article's PublishedAt for this ticker
+        var latestArticleScore = await _dbContext.ArticleScores
+            .Include(a => a.Article)
+            .Where(a => a.Ticker.Symbol == selectedTicker)
+            .OrderByDescending(a => a.Article.PublishedAt)
+            .FirstOrDefaultAsync();
+
+        var end = latestArticleScore != null ? latestArticleScore.Article.PublishedAt : DateTime.UtcNow;
+        var start = end.AddHours(-24);
 
         var data = await _getDashboardData.ExecuteAsync(selectedTicker, start, end);
 
@@ -56,27 +63,30 @@ public class DashboardController : Controller
             viewModel.LastUpdated = DateTime.UtcNow.ToString("MMM dd, yyyy");
             viewModel.LastUpdatedTime = DateTime.UtcNow.ToString("h:mm tt");
             
-            // Generate the list of dates from start to endDate
-            var dateRange = new List<DateTime>();
-            for (var d = start.Date; d <= end.Date; d = d.AddDays(1))
+            // Generate the list of hours from start to end
+            var hourRange = new List<DateTime>();
+            var currentHour = new DateTime(start.Year, start.Month, start.Day, start.Hour, 0, 0, DateTimeKind.Utc);
+            while (currentHour <= end)
             {
-                dateRange.Add(d);
+                hourRange.Add(currentHour);
+                currentHour = currentHour.AddHours(1);
             }
 
             viewModel.TrendLabels = new List<string>();
-            viewModel.TrendScores = new List<decimal>();
+            viewModel.TrendScores = new List<decimal?>();
 
-            foreach (var d in dateRange)
+            foreach (var h in hourRange)
             {
-                viewModel.TrendLabels.Add(d.ToString("MMM dd"));
-                var summaryForDate = data.Trend.FirstOrDefault(t => t.Date == DateOnly.FromDateTime(d));
-                viewModel.TrendScores.Add(summaryForDate?.AverageScore ?? 0m);
+                // Format e.g., "14:00" or "02:00 PM"
+                viewModel.TrendLabels.Add(h.ToString("HH:00"));
+                var scoreForHour = data.HourlyTrend.FirstOrDefault(t => t.Hour == h);
+                viewModel.TrendScores.Add(scoreForHour?.AverageScore);
             }
 
-            if (data.Trend.Count > 1)
+            if (data.HourlyTrend.Count > 1)
             {
-                var first = data.Trend.First().AverageScore;
-                var last = data.Trend.Last().AverageScore;
+                var first = data.HourlyTrend.First().AverageScore;
+                var last = data.HourlyTrend.Last().AverageScore;
                 viewModel.TrendDirection = last > first ? "Upward" : (last < first ? "Downward" : "Stable");
             }
             else
@@ -84,12 +94,12 @@ public class DashboardController : Controller
                 viewModel.TrendDirection = "Stable";
             }
 
-            int totalPos = data.RecentArticles.Count(a => a.ScoreLabel.Contains("Positive", StringComparison.OrdinalIgnoreCase));
-            int totalNeg = data.RecentArticles.Count(a => a.ScoreLabel.Contains("Negative", StringComparison.OrdinalIgnoreCase));
-            int totalNeut = data.RecentArticles.Count(a => a.ScoreLabel.Contains("Neutral", StringComparison.OrdinalIgnoreCase));
-            int total = data.RecentArticles.Count;
+            int totalPos = data.PositiveArticlesCount;
+            int totalNeg = data.NegativeArticlesCount;
+            int totalNeut = data.NeutralArticlesCount;
+            int total = data.ArticlesForToday;
             
-            viewModel.TotalArticles = data.ArticlesForToday; // Number of articles in the period
+            viewModel.TotalArticles = total; 
             viewModel.PositivePercent = total > 0 ? (totalPos * 100 / total) : 0;
             viewModel.NegativePercent = total > 0 ? (totalNeg * 100 / total) : 0;
             viewModel.NeutralPercent = total > 0 ? (totalNeut * 100 / total) : 0;

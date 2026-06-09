@@ -116,55 +116,97 @@ public class ProcessScoringUseCase
                     })
                     .ToList();
 
-                try
+                // Wait 4 seconds to guarantee we stay under the 15 RPM Free Tier limit
+                await Task.Delay(4000, cancellationToken);
+
+                int maxRetries = 3;
+                int currentRetry = 0;
+                bool success = false;
+
+                while (!success && currentRetry < maxRetries)
                 {
-                    var results = await _sentimentLlm.ScoreArticlesAsync(
-                        ticker.Symbol,
-                        ticker.CompanyName,
-                        articleInputs,
-                        cancellationToken);
-
-                    // Match results back to jobs by Index
-                    var resultByIndex = results.ToDictionary(r => r.Index);
-
-                    for (int i = 0; i < tickerJobs.Count; i++)
+                    try
                     {
-                        var job = tickerJobs[i];
+                        var results = await _sentimentLlm.ScoreArticlesAsync(
+                            ticker.Symbol,
+                            ticker.CompanyName,
+                            articleInputs,
+                            cancellationToken);
 
-                        if (!resultByIndex.TryGetValue(i, out var result))
+                        // Match results back to jobs by Index
+                        var resultByIndex = results.ToDictionary(r => r.Index);
+
+                        for (int i = 0; i < tickerJobs.Count; i++)
                         {
-                            job.StatusId = ScoringJobStatus.Failed;
-                            job.ErrorMessage = $"LLM did not return a result for article at index {i}.";
+                            var job = tickerJobs[i];
+
+                            if (!resultByIndex.TryGetValue(i, out var result))
+                            {
+                                job.StatusId = ScoringJobStatus.Failed;
+                                job.ErrorMessage = $"LLM did not return a result for article at index {i}.";
+                                job.CompletdAt = DateTime.UtcNow;
+                                processedToday++;
+                                continue;
+                            }
+
+                            // Only save scores for articles that are actually relevant to the company
+                            if (!string.Equals(result.ScoreLabel, "Irrelevant", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _dbContext.ArticleScores.Add(new ArticleScore
+                                {
+                                    ArticleId = job.ArticleId,
+                                    TickerId = job.TickerId,
+                                    Score = result.Score,
+                                    ScoreLabel = result.ScoreLabel,
+                                    Confidence = result.Confidence,
+                                    ScoredAt = DateTime.UtcNow
+                                });
+                            }
+                            else
+                            {
+                                _logger.LogInformation("Discarded irrelevant article '{Title}' for ticker {Ticker}", job.Article?.Title, ticker.Symbol);
+                            }
+
+                            job.StatusId = ScoringJobStatus.Completed;
                             job.CompletdAt = DateTime.UtcNow;
                             processedToday++;
-                            continue;
                         }
-
-                        _dbContext.ArticleScores.Add(new ArticleScore
-                        {
-                            ArticleId = job.ArticleId,
-                            TickerId = job.TickerId,
-                            Score = result.Score,
-                            ScoreLabel = result.ScoreLabel,
-                            Confidence = result.Confidence,
-                            ScoredAt = DateTime.UtcNow
-                        });
-
-                        job.StatusId = ScoringJobStatus.Completed;
-                        job.CompletdAt = DateTime.UtcNow;
-                        processedToday++;
+                        
+                        success = true;
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to score batch for ticker {Ticker}", ticker.Symbol);
-
-                    foreach (var job in tickerJobs)
+                    catch (HttpRequestException ex) when (ex.Message.Contains("429"))
                     {
-                        job.StatusId = ScoringJobStatus.Failed;
-                        job.ErrorMessage = $"Batch scoring failed: {ex.Message}";
-                        job.CompletdAt = DateTime.UtcNow;
-                        processedToday++;
+                        currentRetry++;
+                        _logger.LogWarning("Rate limit 429 hit for ticker {Ticker}. Waiting 60 seconds before retry {Retry}/{Max}...", ticker.Symbol, currentRetry, maxRetries);
+                        
+                        if (currentRetry >= maxRetries)
+                        {
+                            _logger.LogError(ex, "Failed to score batch for ticker {Ticker} after {Max} retries.", ticker.Symbol, maxRetries);
+                            foreach (var job in tickerJobs)
+                            {
+                                job.StatusId = ScoringJobStatus.Failed;
+                                job.ErrorMessage = $"Batch scoring failed after {maxRetries} rate limit retries: {ex.Message}";
+                                job.CompletdAt = DateTime.UtcNow;
+                                processedToday++;
+                            }
+                        }
+                        else
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to score batch for ticker {Ticker}", ticker.Symbol);
+
+                        foreach (var job in tickerJobs)
+                        {
+                            job.StatusId = ScoringJobStatus.Failed;
+                            job.ErrorMessage = $"Batch scoring failed: {ex.Message}";
+                            job.CompletdAt = DateTime.UtcNow;
+                            processedToday++;
+                        }
+                        break; // break retry loop for non-429 errors
                     }
                 }
             }

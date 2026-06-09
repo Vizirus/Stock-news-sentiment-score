@@ -42,7 +42,7 @@ public class RetryFailedJobsUseCase
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         // Notify the background worker to wake up and start processing
-        _jobTrigger.TriggerScoringJob();
+        await _jobTrigger.TriggerScoringJobAsync();
 
         return failedJobs.Count;
     }

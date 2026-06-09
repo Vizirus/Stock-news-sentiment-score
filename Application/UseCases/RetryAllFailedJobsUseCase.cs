@@ -32,6 +32,6 @@ public class RetryAllFailedJobsUseCase
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         // Signal background worker
-        _jobTriggerService.TriggerScoringJob();
+        await _jobTriggerService.TriggerScoringJobAsync();
     }
 }

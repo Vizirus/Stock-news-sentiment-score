@@ -1,5 +1,4 @@
 using Application.Interfaces;
-using Application.Services;
 using Application.UseCases;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,8 +21,7 @@ public static class DependencyInjection
         services.AddScoped<SummaryDataCleanUpUseCase>();
         services.AddScoped<RawDataCleanUpUseCase>();
 
-        // Background Job Services
-        services.AddSingleton<Application.Interfaces.IJobTriggerService, Application.Services.JobTriggerService>();
+        // Background Job Services moved to Infrastructure
 
         return services;
     }

@@ -43,6 +43,8 @@ public class ArticleDetailViewModel
 {
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
     public string Source { get; set; } = string.Empty;
     public string Ticker { get; set; } = string.Empty;
     public string PublishedAt { get; set; } = string.Empty;
@@ -54,6 +56,21 @@ public class ArticleDetailViewModel
 // ===================== SCORING JOBS =====================
 public class ScoringJobsViewModel
 {
+    public int TotalCount { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 100;
+    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
+
+    public string? SelectedTicker { get; set; }
+    public string? SelectedStatus { get; set; }
+    public string? SelectedLabel { get; set; }
+    public DateTime DateRangeStart { get; set; } = DateTime.UtcNow.AddDays(-7);
+    public DateTime DateRangeEnd { get; set; } = DateTime.UtcNow;
+
+    public List<string> AvailableTickers { get; set; } = [];
+    public List<string> AvailableStatuses { get; set; } = ["Pending", "Completed", "Failed"];
+    public List<string> AvailableLabels { get; set; } = ["Very Positive", "Positive", "Neutral", "Negative", "Very Negative", "Irrelevant"];
+
     public int TotalPending { get; set; }
     public int TotalFailed { get; set; }
     public int TotalCompleted { get; set; }

@@ -99,7 +99,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>, IAppDBContext
 
             entity.Property(s => s.ScoreLabel)
                 .HasMaxLength(50)
-                .IsRequired();
+                .IsRequired();  
 
             entity.Property(s => s.Confidence)
                 .HasPrecision(5, 4)

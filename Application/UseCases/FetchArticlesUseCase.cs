@@ -10,11 +10,13 @@ public class FetchArticlesUseCase
 {
     private readonly IAppDBContext dbContext;
     private readonly INewsAPI newsAPI;
+    private readonly IJobTriggerService jobTriggerService;
 
-    public FetchArticlesUseCase(IAppDBContext appDBContext, INewsAPI newsAPI)
+    public FetchArticlesUseCase(IAppDBContext appDBContext, INewsAPI newsAPI, IJobTriggerService jobTriggerService)
     {
         dbContext = appDBContext;
         this.newsAPI = newsAPI;
+        this.jobTriggerService = jobTriggerService;
     }
 
     public async Task ExecuteAsync(CancellationToken token = default)
@@ -107,5 +109,8 @@ public class FetchArticlesUseCase
 
             await dbContext.SaveChangesAsync(token);
         }
+
+        // Trigger the Queue to instantly score the newly fetched articles!
+        await jobTriggerService.TriggerScoringJobAsync();
     }
 }

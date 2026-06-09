@@ -67,8 +67,8 @@ public class ArticlesController : Controller
     public async Task<IActionResult> Index(string? ticker, string? label, string? source, DateTime? startDate, DateTime? endDate, int page = 1)
     {
         var pageSize = 10;
-        var start = startDate ?? DateTime.UtcNow.AddDays(-7);
-        var end = endDate ?? DateTime.UtcNow;
+        var start = startDate?.Date ?? DateTime.UtcNow.AddDays(-7).Date;
+        var end = endDate?.Date.AddDays(1).AddTicks(-1) ?? DateTime.UtcNow.Date.AddDays(1).AddTicks(-1);
 
         var query = _dbContext.ArticleScores
             .Include(ascore => ascore.Article)
@@ -93,6 +93,8 @@ public class ArticlesController : Controller
             {
                 Id = ascore.Article.Id,
                 Title = ascore.Article.Title,
+                Description = ascore.Article.Description ?? "No description available.",
+                Url = ascore.Article.Url,
                 Source = ascore.Article.SourceName,
                 Ticker = ascore.Ticker.Symbol,
                 PublishedAt = ascore.Article.PublishedAt.ToString("MMM dd, yyyy HH:mm"),
@@ -123,8 +125,8 @@ public class ArticlesController : Controller
     [HttpGet]
     public async Task<IActionResult> Export(string? ticker, string? label, string? source, DateTime? startDate, DateTime? endDate)
     {
-        var start = startDate ?? DateTime.UtcNow.AddDays(-30);
-        var end = endDate ?? DateTime.UtcNow;
+        var start = startDate?.Date ?? DateTime.UtcNow.AddDays(-30).Date;
+        var end = endDate?.Date.AddDays(1).AddTicks(-1) ?? DateTime.UtcNow.Date.AddDays(1).AddTicks(-1);
 
         var query = _dbContext.ArticleScores
             .Include(ascore => ascore.Article)
@@ -204,34 +206,49 @@ public class ScoringJobsController : Controller
 {
     private readonly GetScoringJobsUseCase _getScoringJobsUseCase;
     private readonly RetryAllFailedJobsUseCase _retryAllFailedJobsUseCase;
+    private readonly IAppDBContext _dbContext;
 
-    public ScoringJobsController(GetScoringJobsUseCase getScoringJobsUseCase, RetryAllFailedJobsUseCase retryAllFailedJobsUseCase)
+    public ScoringJobsController(GetScoringJobsUseCase getScoringJobsUseCase, RetryAllFailedJobsUseCase retryAllFailedJobsUseCase, IAppDBContext dbContext)
     {
         _getScoringJobsUseCase = getScoringJobsUseCase;
         _retryAllFailedJobsUseCase = retryAllFailedJobsUseCase;
+        _dbContext = dbContext;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? ticker, string? status, string? label, DateTime? startDate, DateTime? endDate, int page = 1)
     {
-        var result = await _getScoringJobsUseCase.ExecuteAsync();
+        var pageSize = 100;
+        var start = startDate?.Date ?? DateTime.UtcNow.AddDays(-7).Date;
+        var end = endDate?.Date.AddDays(1).AddTicks(-1) ?? DateTime.UtcNow.Date.AddDays(1).AddTicks(-1);
+
+        var result = await _getScoringJobsUseCase.ExecuteAsync(ticker, status, start, end, label, page, pageSize);
         
         var viewModel = new ScoringJobsViewModel
         {
+            TotalCount = result.TotalCount,
+            Page = page,
+            PageSize = pageSize,
+            SelectedTicker = ticker,
+            SelectedStatus = status,
+            SelectedLabel = label,
+            DateRangeStart = start,
+            DateRangeEnd = end,
+            AvailableTickers = await _dbContext.Ticker.Select(t => t.Symbol).OrderBy(s => s).ToListAsync(),
             TotalPending = result.TotalPending,
             TotalFailed = result.TotalFailed,
             TotalCompleted = result.TotalCompleted,
             Jobs = result.Jobs.Select(j => new ScoringJobDetailViewModel
             {
                 Id = j.Id,
-                ArticleTitle = j.Article?.Title ?? "Unknown Article",
-                Ticker = j.Ticker?.Symbol ?? "Unknown",
-                Status = j.StatusId.ToString(),
+                ArticleTitle = j.ArticleTitle,
+                Ticker = j.Ticker,
+                Status = j.Status.ToString(),
                 CreatedAt = j.CreatedAt.ToString("MMM dd, yyyy HH:mm"),
-                StartedAt = j.StartedAt == default ? null : j.StartedAt.ToString("MMM dd, yyyy HH:mm"),
-                CompletedAt = j.CompletdAt == default ? null : j.CompletdAt.ToString("MMM dd, yyyy HH:mm"),
+                StartedAt = j.StartedAt?.ToString("MMM dd, yyyy HH:mm"),
+                CompletedAt = j.CompletedAt?.ToString("MMM dd, yyyy HH:mm"),
                 ErrorMessage = j.ErrorMessage,
-                Score = null,
-                Label = null
+                Score = j.Score,
+                Label = j.Label
             }).ToList()
         };
 

@@ -138,7 +138,18 @@
             {
                 <tr>
                     <td style="color:var(--text-muted);font-size:12px;">@a.Id</td>
-                    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@a.Title">@a.Title</td>
+                    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        <a href="javascript:void(0)" 
+                           data-title="@a.Title" 
+                           data-description="@a.Description" 
+                           data-url="@a.Url" 
+                           onclick="showArticleModal(this)" 
+                           style="color:var(--text-primary); text-decoration:underline; text-decoration-color:var(--border-color); text-underline-offset:3px;" 
+                           onmouseover="this.style.color='var(--accent-teal)'; this.style.textDecorationColor='var(--accent-teal)';"
+                           onmouseout="this.style.color='var(--text-primary)'; this.style.textDecorationColor='var(--border-color)';">
+                            @a.Title
+                        </a>
+                    </td>
                     <td><span style="font-weight:700;color:var(--accent-teal);font-family:monospace;font-size:12px;">@a.Ticker</span></td>
                     <td style="color:var(--text-secondary);">@a.Source</td>
                     <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">@a.PublishedAt</td>
@@ -183,6 +194,34 @@
     </div>
 </div>
 
+<!-- Article Details Modal -->
+<div id="articleModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:9999; justify-content:center; align-items:center;">
+    <div class="panel" style="width:100%; max-width:600px; position:relative; box-shadow: 0 20px 40px rgba(0,0,0,0.4); animation: modalFadeIn 0.2s ease-out;">
+        <button onclick="closeArticleModal()" class="btn btn-ghost" style="position:absolute; top:16px; right:16px; padding:6px; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <div class="panel-header">
+            <span class="panel-title" id="modalTitle" style="padding-right: 30px; line-height: 1.4;">Article Title</span>
+        </div>
+        <div style="padding: 24px; color:var(--text-secondary); font-size:14px; line-height:1.6;" id="modalDescription">
+            Article Description...
+        </div>
+        <div class="table-footer" style="display:flex; justify-content:flex-end;">
+            <a id="modalUrl" href="#" target="_blank" class="btn btn-primary" style="text-decoration:none;">
+                Read Full Article
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:6px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    @@keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
 @section Scripts {
 <script>
 function filterTable(inputId, tableId) {
@@ -217,5 +256,31 @@ function exportData() {
     }
     window.location.href = '/Articles/Export?' + params.toString();
 }
+
+function showArticleModal(element) {
+    document.getElementById('modalTitle').textContent = element.getAttribute('data-title');
+    document.getElementById('modalDescription').textContent = element.getAttribute('data-description');
+    
+    const url = element.getAttribute('data-url');
+    const urlBtn = document.getElementById('modalUrl');
+    if (url && url !== "") {
+        urlBtn.href = url;
+        urlBtn.style.display = 'inline-flex';
+    } else {
+        urlBtn.style.display = 'none';
+    }
+    
+    const modal = document.getElementById('articleModal');
+    modal.style.display = 'flex';
+}
+
+function closeArticleModal() {
+    document.getElementById('articleModal').style.display = 'none';
+}
+
+// Close on outside click
+document.getElementById('articleModal').addEventListener('click', function(e) {
+    if (e.target === this) closeArticleModal();
+});
 </script>
 }

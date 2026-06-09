@@ -1,4 +1,4 @@
-﻿namespace Application.DTOs;
+namespace Application.DTOs;
 
 public class DashboardDto
 {
@@ -12,11 +12,15 @@ public class DashboardDto
 
     public int ArticlesForToday { get; set; }
 
-    public List<TickerTrendDto> Trend { get; set; } = new();
+    public List<HourlyTrendDto> HourlyTrend { get; set; } = new();
     public List<RecentArticleDto> RecentArticles { get; set; } = new();
     public List<TickerTrendDto> DailySummaries { get; set; } = new();
 
     public int PendingJobsCount { get; set; }
 
     public int FailedJobsCount { get; set; }
+
+    public int PositiveArticlesCount { get; set; }
+    public int NegativeArticlesCount { get; set; }
+    public int NeutralArticlesCount { get; set; }
 }

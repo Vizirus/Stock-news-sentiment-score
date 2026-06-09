@@ -11,4 +11,6 @@ public class SystemSettings
     public int FetchIntervalHours { get; set; } = 6;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    public DateTime? LastArticleFetchTime { get; set; }
 }
