@@ -4,6 +4,10 @@ A Clean Architecture .NET system that ingests financial news for tracked stock t
 
 ## Architecture
 
+```text
+Finnhub API -> FetchArticlesUseCase -> ScoringJobs -> ProcessScoringUseCase (batched) -> DailyAggregate -> Web Dashboard
+```
+
 The solution follows **Clean Architecture** with strict separation of concerns:
 
 - **`Domain`** — Core entities (`Ticker`, `Article`, `ArticleScore`, `ScoringJob`, `TickerDailySummary`, `UserTicker`) and domain enums.
@@ -29,6 +33,3 @@ The solution follows **Clean Architecture** with strict separation of concerns:
 
 ## Running Tests
 
-```bash
-dotnet test
-```
