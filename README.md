@@ -32,4 +32,6 @@ The solution follows **Clean Architecture** with strict separation of concerns:
 - **Infrastructure:** Docker, Nginx, GitHub Actions CI
 
 ## Running Tests
-
+```bash
+dotnet test
+```
