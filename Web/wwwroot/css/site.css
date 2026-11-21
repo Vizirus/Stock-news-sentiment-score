@@ -163,6 +163,7 @@ a:hover { color: var(--accent-teal); }
 .main-wrapper {
     margin-left: var(--sidebar-width);
     flex: 1;
+    min-width: 0; /* Critical: allows flex child to shrink below content size */
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -197,12 +198,14 @@ a:hover { color: var(--accent-teal); }
     display: flex;
     align-items: center;
     gap: 12px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     margin-bottom: 24px;
     background: var(--bg-card);
     padding: 14px 18px;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
+    scrollbar-width: thin;
 }
 
 .filter-group {
@@ -229,7 +232,14 @@ a:hover { color: var(--accent-teal); }
     font-size: 13.5px;
     outline: none;
     transition: var(--transition);
-    min-width: 180px;
+    min-width: 140px;
+    max-width: 200px;
+}
+
+input[type="datetime-local"].filter-select {
+    min-width: 160px;
+    max-width: 180px;
+    font-size: 12.5px;
 }
 
 .filter-select:focus, .filter-input:focus {

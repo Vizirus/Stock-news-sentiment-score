@@ -7,11 +7,11 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Infrastructure.DB;
 
-/// <summary>
+/// <summary>ds
 /// Seeds the SQLite development database with representative mock data on startup.
 /// Only runs when using the SQLite provider (development/testing).
 /// </summary>
-public static class DbSeeder
+public static class DbSeederd
 {
     public static async Task SeedAsync(IServiceProvider services)
     {

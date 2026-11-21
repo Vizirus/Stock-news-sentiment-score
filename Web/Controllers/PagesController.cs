@@ -18,11 +18,13 @@ public class TickersController : Controller
 {
     private readonly GetTickersUseCase _getTickersUseCase;
     private readonly AddTickerUseCase _addTickerUseCase;
+    private readonly DeleteTickerUseCase _deleteTickerUseCase;
 
-    public TickersController(GetTickersUseCase getTickersUseCase, AddTickerUseCase addTickerUseCase)
+    public TickersController(GetTickersUseCase getTickersUseCase, AddTickerUseCase addTickerUseCase, DeleteTickerUseCase deleteTickerUseCase)
     {
         _getTickersUseCase = getTickersUseCase;
         _addTickerUseCase = addTickerUseCase;
+        _deleteTickerUseCase = deleteTickerUseCase;
     }
 
     public async Task<IActionResult> Index()
@@ -53,6 +55,13 @@ public class TickersController : Controller
         await _addTickerUseCase.ExecuteAsync(symbol, companyName);
         return RedirectToAction("Index");
     }
+
+    [HttpPost]
+    public async Task<IActionResult> Delete(string symbol)
+    {
+        await _deleteTickerUseCase.ExecuteAsync(symbol);
+        return RedirectToAction("Index");
+    }
 }
 
 public class ArticlesController : Controller
@@ -73,7 +82,7 @@ public class ArticlesController : Controller
         var query = _dbContext.ArticleScores
             .Include(ascore => ascore.Article)
             .Include(ascore => ascore.Ticker)
-            .Where(ascore => ascore.ScoredAt >= start && ascore.ScoredAt <= end);
+            .Where(ascore => ascore.Article.PublishedAt >= start && ascore.Article.PublishedAt <= end);
 
         if (!string.IsNullOrEmpty(ticker) && ticker != "All Tickers")
             query = query.Where(ascore => ascore.Ticker.Symbol == ticker);
@@ -85,8 +94,16 @@ public class ArticlesController : Controller
             query = query.Where(ascore => ascore.Article.SourceName == source);
 
         var totalCount = await query.CountAsync();
+
+        // Aggregate KPI stats over ALL filtered rows (not just the current page)
+        var scoredCount = await query.CountAsync(a => a.Score != 0);
+        var avgConfidence = totalCount > 0
+            ? await query.AverageAsync(a => a.Confidence)
+            : 0m;
+        var sourcesCount = await query.Select(a => a.Article.SourceName).Distinct().CountAsync();
+
         var items = await query
-            .OrderByDescending(ascore => ascore.ScoredAt)
+            .OrderByDescending(ascore => ascore.Article.PublishedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(ascore => new ArticleDetailViewModel
@@ -107,6 +124,9 @@ public class ArticlesController : Controller
         var viewModel = new ArticlesViewModel
         {
             TotalCount = totalCount,
+            ScoredCount = scoredCount,
+            AvgConfidence = avgConfidence,
+            SourcesCount = sourcesCount,
             Page = page,
             PageSize = pageSize,
             SelectedTicker = ticker,
@@ -131,7 +151,7 @@ public class ArticlesController : Controller
         var query = _dbContext.ArticleScores
             .Include(ascore => ascore.Article)
             .Include(ascore => ascore.Ticker)
-            .Where(ascore => ascore.ScoredAt >= start && ascore.ScoredAt <= end);
+            .Where(ascore => ascore.Article.PublishedAt >= start && ascore.Article.PublishedAt <= end);
 
         if (!string.IsNullOrEmpty(ticker) && ticker != "All Tickers")
             query = query.Where(ascore => ascore.Ticker.Symbol == ticker);
@@ -143,7 +163,7 @@ public class ArticlesController : Controller
             query = query.Where(ascore => ascore.Article.SourceName == source);
 
         var items = await query
-            .OrderByDescending(ascore => ascore.ScoredAt)
+            .OrderByDescending(ascore => ascore.Article.PublishedAt)
             .Select(ascore => new
             {
                 ascore.Article.Id,
@@ -297,10 +317,21 @@ public class SummariesController : Controller
 
         string GetLabel(decimal score) => score >= 0.2m ? "Positive" : (score <= -0.2m ? "Negative" : "Neutral");
 
+        // Resolve company name for the selected ticker
+        var companyName = string.Empty;
+        if (!string.IsNullOrWhiteSpace(ticker) && ticker != "All Tickers")
+        {
+            var tickerEntity = await _dbContext.Ticker
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Symbol == ticker);
+            companyName = tickerEntity?.CompanyName ?? string.Empty;
+        }
+
         var viewModel = new SummariesViewModel
         {
             AvailableTickers = await _dbContext.Ticker.Select(t => t.Symbol).OrderBy(s => s).ToListAsync(),
             SelectedTicker = ticker ?? "All Tickers",
+            CompanyName = companyName,
             Summaries = summaries.Select(s => new SummaryRowViewModel
             {
                 Date = s.SummaryDate.ToString("MMM dd, yyyy"),

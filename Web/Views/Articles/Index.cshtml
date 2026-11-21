@@ -30,17 +30,17 @@
     </div>
     <div class="kpi-card">
         <div class="kpi-label">Scored</div>
-        <div class="kpi-value accent-blue">@Model.Articles.Count(a => a.Score != 0)</div>
+        <div class="kpi-value accent-blue">@Model.ScoredCount</div>
         <div class="kpi-sub">articles with sentiment</div>
     </div>
     <div class="kpi-card">
         <div class="kpi-label">Avg Confidence</div>
-        <div class="kpi-value" style="color:var(--accent-yellow);">@(Model.Articles.Any() ? Model.Articles.Average(a => a.Confidence).ToString("0.00") : "0.00")</div>
+        <div class="kpi-value" style="color:var(--accent-yellow);">@Model.AvgConfidence.ToString("0.00")</div>
         <div class="kpi-sub">model confidence</div>
     </div>
     <div class="kpi-card">
         <div class="kpi-label">Sources</div>
-        <div class="kpi-value">@Model.Articles.Select(a => a.Source).Distinct().Count()</div>
+        <div class="kpi-value">@Model.SourcesCount</div>
         <div class="kpi-sub">unique news sources</div>
     </div>
 </div>

@@ -39,9 +39,17 @@
         </select>
     </div>
 
+    <div class="filter-group" style="margin-left: 15px;">
+        <span class="filter-label">Start Time (Local)</span>
+        <input type="datetime-local" class="filter-select" id="localStartDateTime" onchange="updateDateTimeFilters()" />
+        <input type="hidden" id="startDateTime" name="startDateTime" value="@(Model.SelectedStartDate?.ToString("yyyy-MM-ddTHH:mm:ssZ"))" />
+    </div>
 
-
-    <div class="filter-actions">
+    <div class="filter-group" style="margin-left: 15px;">
+        <span class="filter-label">End Time (Local)</span>
+        <input type="datetime-local" class="filter-select" id="localEndDateTime" onchange="updateDateTimeFilters()" />
+        <input type="hidden" id="endDateTime" name="endDateTime" value="@(Model.SelectedEndDate?.ToString("yyyy-MM-ddTHH:mm:ssZ"))" />
+    </div>    <div class="filter-actions">
         <button type="submit" class="btn btn-ghost" id="refreshBtn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="23 4 23 10 17 10"></polyline>
@@ -95,7 +103,7 @@
     <!-- Line Chart: Sentiment Trend -->
     <div class="panel">
         <div class="panel-header">
-            <span class="panel-title">24-Hour Sentiment Pulse</span>
+            <span class="panel-title">24-Hour Sentiment Pulse (Last article fetched: @Model.DateRangeEnd)</span>
         </div>
         <div class="chart-container" style="height: 220px;">
             <canvas id="sentimentTrendChart"></canvas>
@@ -265,9 +273,80 @@
 
 @section Scripts {
 <script>
+    // ---- Filter Timezone Logic ----
+    document.addEventListener("DOMContentLoaded", function () {
+        const hiddenEndInput = document.getElementById("endDateTime");
+        const localEndInput = document.getElementById("localEndDateTime");
+        const hiddenStartInput = document.getElementById("startDateTime");
+        const localStartInput = document.getElementById("localStartDateTime");
+        
+        const pad = (n) => n.toString().padStart(2, '0');
+
+        // Set max limit to current local time, capped at the current hour (e.g. 12:00)
+        const now = new Date();
+        const localMax = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
+        localEndInput.max = localMax;
+        localStartInput.max = localMax;
+        
+        if (hiddenEndInput.value) {
+            const d = new Date(hiddenEndInput.value);
+            localEndInput.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+        
+        if (hiddenStartInput.value) {
+            const d = new Date(hiddenStartInput.value);
+            localStartInput.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+    });
+
+    function updateDateTimeFilters() {
+        const now = new Date();
+        // Clamp now to the current minute (no seconds/ms drift)
+        now.setSeconds(0, 0);
+
+        const localEndInput = document.getElementById("localEndDateTime");
+        const hiddenEndInput = document.getElementById("endDateTime");
+        if (localEndInput.value) {
+            const d = new Date(localEndInput.value);
+            if (d > now) {
+                alert("End time cannot be in the future. It has been reset to the current time.");
+                localEndInput.value = localEndInput.max;
+                hiddenEndInput.value = now.toISOString();
+            } else {
+                hiddenEndInput.value = d.toISOString();
+            }
+        } else {
+            hiddenEndInput.value = "";
+        }
+
+        const localStartInput = document.getElementById("localStartDateTime");
+        const hiddenStartInput = document.getElementById("startDateTime");
+        if (localStartInput.value) {
+            const d = new Date(localStartInput.value);
+            if (d > now) {
+                alert("Start time cannot be in the future. It has been reset to the current time.");
+                localStartInput.value = localStartInput.max;
+                hiddenStartInput.value = now.toISOString();
+            } else {
+                hiddenStartInput.value = d.toISOString();
+            }
+        } else {
+            hiddenStartInput.value = "";
+        }
+
+        document.getElementById("filterForm").submit();
+    }
+
     // ---- Line Chart: Sentiment Trend ----
     const trendCtx = document.getElementById('sentimentTrendChart').getContext('2d');
-    const trendLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TrendLabels));
+    const rawLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TrendLabels));
+    
+    // Parse UTC ISO strings into local time
+    const trendLabels = rawLabels.map(isoStr => {
+        const d = new Date(isoStr);
+        return `${d.getHours().toString().padStart(2, '0')}:00`;
+    });
+
     const trendScores = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TrendScores));
 
     new Chart(trendCtx, {

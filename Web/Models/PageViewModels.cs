@@ -26,6 +26,11 @@ public class ArticlesViewModel
     public int PageSize { get; set; } = 10;
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
 
+    // Aggregate stats computed over ALL filtered rows (not just current page)
+    public int ScoredCount { get; set; }
+    public decimal AvgConfidence { get; set; }
+    public int SourcesCount { get; set; }
+
     public string? SelectedTicker { get; set; }
     public string? SelectedLabel { get; set; }
     public string? SelectedSource { get; set; }
@@ -95,23 +100,11 @@ public class ScoringJobDetailViewModel
 // ===================== SUMMARIES =====================
 public class SummariesViewModel
 {
-    public List<string> AvailableTickers { get; set; } = ["AAPL", "MSFT", "TSLA", "NVDA", "AMZN", "GOOGL", "META"];
-    public string SelectedTicker { get; set; } = "AAPL";
-    public string CompanyName { get; set; } = "Apple Inc.";
+    public List<string> AvailableTickers { get; set; } = [];
+    public string SelectedTicker { get; set; } = "All Tickers";
+    public string CompanyName { get; set; } = string.Empty;
 
-    public List<SummaryRowViewModel> Summaries { get; set; } =
-    [
-        new() { Date = "May 19, 2025", AvgScore = 0.32m, Label = "Positive",  ArticleCount = 48, PosCount = 25, NeutCount = 14, NegCount = 9  },
-        new() { Date = "May 18, 2025", AvgScore = 0.18m, Label = "Neutral",   ArticleCount = 62, PosCount = 22, NeutCount = 28, NegCount = 12 },
-        new() { Date = "May 17, 2025", AvgScore = 0.05m, Label = "Neutral",   ArticleCount = 41, PosCount = 15, NeutCount = 19, NegCount = 7  },
-        new() { Date = "May 16, 2025", AvgScore = -0.12m, Label = "Neutral",  ArticleCount = 55, PosCount = 18, NeutCount = 20, NegCount = 17 },
-        new() { Date = "May 15, 2025", AvgScore = 0.41m, Label = "Positive",  ArticleCount = 73, PosCount = 38, NeutCount = 21, NegCount = 14 },
-        new() { Date = "May 14, 2025", AvgScore = 0.27m, Label = "Positive",  ArticleCount = 59, PosCount = 27, NeutCount = 22, NegCount = 10 },
-        new() { Date = "May 13, 2025", AvgScore = 0.33m, Label = "Positive",  ArticleCount = 50, PosCount = 24, NeutCount = 18, NegCount = 8  },
-        new() { Date = "May 12, 2025", AvgScore = -0.08m, Label = "Neutral",  ArticleCount = 44, PosCount = 14, NeutCount = 20, NegCount = 10 },
-        new() { Date = "May 11, 2025", AvgScore = -0.31m, Label = "Negative", ArticleCount = 37, PosCount = 8,  NeutCount = 13, NegCount = 16 },
-        new() { Date = "May 10, 2025", AvgScore = 0.19m, Label = "Neutral",   ArticleCount = 52, PosCount = 20, NeutCount = 24, NegCount = 8  },
-    ];
+    public List<SummaryRowViewModel> Summaries { get; set; } = [];
 
     // For mini sparkline chart
     public List<string> ChartLabels => Summaries.AsEnumerable().Reverse().Select(s => s.Date).ToList();

@@ -1,8 +1,12 @@
 using Application;
 using Infrastructure;
-using Infrastructure.DB;
+using Microsoft.AspNetCore.Hosting.StaticWebAssets;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add support for Docker secrets
+builder.Configuration.AddKeyPerFile("/run/secrets", optional: true);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews(options =>
@@ -28,7 +32,7 @@ var app = builder.Build();
 // Seed the SQLite development database on startup
 if (app.Environment.IsDevelopment())
 {
-    await DbSeeder.SeedAsync(app.Services);
+    await Infrastructure.DB.DbSeederd.SeedAsync(app.Services);
 }
 
 // Configure the HTTP request pipeline.
@@ -37,16 +41,20 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+StaticWebAssetsLoader.UseStaticWebAssets(builder.Environment, builder.Configuration);
+app.UseStaticFiles();
+app.MapStaticAssets();
 
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapStaticAssets();
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Urls.Add($"http://0.0.0.0:{port}");
 
 app.Run();

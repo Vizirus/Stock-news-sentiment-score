@@ -22,6 +22,15 @@ sentiment_q.db
 **/packages/
 **/project.assets.json
 
-# Test projects
-Worker.Tests/
-Application.Tests/
+#Additional
+.appdata/
+.dotnet_home/
+NuGet/
+Application/NuGet/
+*.csproj.user
+secrets/
+db_backups/
+*.db-shm
+*.db-wal
+*.pubxml.user
+

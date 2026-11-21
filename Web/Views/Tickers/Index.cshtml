@@ -104,7 +104,10 @@
                     <td>
                         <div style="display:flex;gap:6px;">
                             <a href="/Dashboard?ticker=@t.Symbol" class="btn btn-ghost" style="padding:4px 10px;font-size:11px;">View</a>
-                            <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--accent-red);border-color:var(--accent-red);">Remove</button>
+                            <form action="/Tickers/Delete" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete @t.Symbol?');">
+                                <input type="hidden" name="symbol" value="@t.Symbol" />
+                                <button type="submit" class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--accent-red);border-color:var(--accent-red);">Remove</button>
+                            </form>
                         </div>
                     </td>
                 </tr>

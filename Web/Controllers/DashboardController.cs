@@ -23,7 +23,7 @@ public class DashboardController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? ticker)
+    public async Task<IActionResult> Index(string? ticker, DateTime? startDateTime, DateTime? endDateTime)
     {
         var tickers = await _dbContext.Ticker
             .AsNoTracking()
@@ -34,15 +34,24 @@ public class DashboardController : Controller
             ? (tickers.FirstOrDefault() ?? "AAPL") 
             : ticker;
 
-        // Fetch the most recent article's PublishedAt for this ticker
-        var latestArticleScore = await _dbContext.ArticleScores
-            .Include(a => a.Article)
-            .Where(a => a.Ticker.Symbol == selectedTicker)
-            .OrderByDescending(a => a.Article.PublishedAt)
-            .FirstOrDefaultAsync();
+        var nowUtc = DateTime.UtcNow;
+        var end = endDateTime ?? new DateTime(nowUtc.Year, nowUtc.Month, nowUtc.Day, nowUtc.Hour, 0, 0, DateTimeKind.Utc);
+        if (end.Kind == DateTimeKind.Unspecified)
+        {
+            end = DateTime.SpecifyKind(end, DateTimeKind.Utc);
+        }
+        
+        var start = startDateTime ?? end.AddHours(-24);
+        if (start.Kind == DateTimeKind.Unspecified)
+        {
+            start = DateTime.SpecifyKind(start, DateTimeKind.Utc);
+        }
 
-        var end = latestArticleScore != null ? latestArticleScore.Article.PublishedAt : DateTime.UtcNow;
-        var start = end.AddHours(-24);
+        // Sanity check
+        if (start >= end)
+        {
+            start = end.AddHours(-24);
+        }
 
         var data = await _getDashboardData.ExecuteAsync(selectedTicker, start, end);
 
@@ -52,6 +61,8 @@ public class DashboardController : Controller
             AvailableTickers = tickers,
             DateRangeStart = start,
             DateRangeEnd = end,
+            SelectedStartDate = start,
+            SelectedEndDate = end,
         };
 
         if (data != null)
@@ -75,12 +86,28 @@ public class DashboardController : Controller
             viewModel.TrendLabels = new List<string>();
             viewModel.TrendScores = new List<decimal?>();
 
+            // Fetch the last known score from before the 'start' time for our forward-fill baseline
+            var previousScore = await _dbContext.ArticleScores
+                .Include(a => a.Article)
+                .Where(a => a.Ticker.Symbol == selectedTicker && a.Article.PublishedAt < start)
+                .OrderByDescending(a => a.Article.PublishedAt)
+                .Select(a => (decimal?)a.Score)
+                .FirstOrDefaultAsync();
+
+            decimal? lastKnownScore = previousScore;
+
             foreach (var h in hourRange)
             {
-                // Format e.g., "14:00" or "02:00 PM"
-                viewModel.TrendLabels.Add(h.ToString("HH:00"));
+                // Pass ISO 8601 UTC string to frontend for local timezone conversion
+                viewModel.TrendLabels.Add(h.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+                
                 var scoreForHour = data.HourlyTrend.FirstOrDefault(t => t.Hour == h);
-                viewModel.TrendScores.Add(scoreForHour?.AverageScore);
+                if (scoreForHour != null)
+                {
+                    lastKnownScore = scoreForHour.AverageScore;
+                }
+                
+                viewModel.TrendScores.Add(lastKnownScore);
             }
 
             if (data.HourlyTrend.Count > 1)

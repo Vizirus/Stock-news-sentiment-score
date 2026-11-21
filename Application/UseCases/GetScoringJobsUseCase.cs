@@ -51,7 +51,16 @@ public class GetScoringJobsUseCase
         });
 
         if (!string.IsNullOrEmpty(label) && label != "All Labels")
-            joinedQuery = joinedQuery.Where(x => x.Score != null && x.Score.ScoreLabel == label);
+        {
+            if (label == "Irrelevant")
+            {
+                joinedQuery = joinedQuery.Where(x => x.Score == null && x.Job.StatusId == Domain.Enums.ScoringJobStatus.Completed);
+            }
+            else
+            {
+                joinedQuery = joinedQuery.Where(x => x.Score != null && x.Score.ScoreLabel == label);
+            }
+        }
 
         var totalCount = await joinedQuery.CountAsync(cancellationToken);
         

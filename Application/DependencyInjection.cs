@@ -11,6 +11,7 @@ public static class DependencyInjection
         services.AddScoped<GetDashboardDataUseCase>();
         services.AddScoped<GetTickersUseCase>();
         services.AddScoped<AddTickerUseCase>();
+        services.AddScoped<DeleteTickerUseCase>();
         services.AddScoped<RetryFailedJobsUseCase>();
         services.AddScoped<GetScoringJobsUseCase>();
         services.AddScoped<RetryAllFailedJobsUseCase>();

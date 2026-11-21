@@ -9,6 +9,8 @@ public class DashboardViewModel
     public List<string> AvailableTickers { get; set; } = new();
     public DateTime DateRangeStart { get; set; }
     public DateTime DateRangeEnd { get; set; }
+    public DateTime? SelectedStartDate { get; set; }
+    public DateTime? SelectedEndDate { get; set; }
 
     // --- KPI Cards ---
     public string CompanyName { get; set; } = string.Empty;

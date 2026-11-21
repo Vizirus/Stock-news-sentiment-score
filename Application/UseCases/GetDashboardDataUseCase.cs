@@ -42,9 +42,10 @@ public class GetDashboardDataUseCase
         var neutralCount = periodScores.Count(s => s.ScoreLabel != null && s.ScoreLabel.Contains("Neutral", StringComparison.OrdinalIgnoreCase));
 
         // Daily summaries for the period (for the Daily Summaries table)
+        var tenDaysAgo = end.Date.AddDays(-10);
         var summaries = await _dbContext.TickerDailySummaries
             .AsNoTracking()
-            .Where(summary => summary.TickerId == ticker.Id && summary.SummaryDate >= start.Date && summary.SummaryDate < end.Date.AddDays(1))
+            .Where(summary => summary.TickerId == ticker.Id && summary.SummaryDate >= tenDaysAgo && summary.SummaryDate < end.Date.AddDays(1))
             .OrderBy(summary => summary.SummaryDate)
             .Select(summary => new TickerTrendDto
             {
@@ -57,7 +58,11 @@ public class GetDashboardDataUseCase
         var hourlyTrend = periodScores
             .GroupBy(s => {
                 var d = s.Article.PublishedAt;
-                return new DateTime(d.Year, d.Month, d.Day, d.Hour, 0, 0, DateTimeKind.Utc);
+                // Normalize to UTC to ensure equality checks in the controller work correctly
+                var normalized = d.Kind == DateTimeKind.Unspecified 
+                    ? DateTime.SpecifyKind(d, DateTimeKind.Utc) 
+                    : d.ToUniversalTime();
+                return new DateTime(normalized.Year, normalized.Month, normalized.Day, normalized.Hour, 0, 0, DateTimeKind.Utc);
             })
             .Select(g => new HourlyTrendDto
             {

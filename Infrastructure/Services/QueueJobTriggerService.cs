@@ -17,7 +17,15 @@ public class QueueJobTriggerService : IJobTriggerService
 
     public async Task TriggerScoringJobAsync()
     {
-        await _queueClient.CreateIfNotExistsAsync();
-        await _queueClient.SendMessageAsync("trigger-scoring");
+        try
+        {
+            await _queueClient.CreateIfNotExistsAsync();
+            await _queueClient.SendMessageAsync("trigger-scoring");
+        }
+        catch (System.Exception)
+        {
+            // Ignore queue failures. The Azure Function will automatically pick up 
+            // the jobs via its 15-minute TimerTrigger anyway!
+        }
     }
 }
